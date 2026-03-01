@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
-import { Calculator } from "lucide-react";
-import { solvePrice, formatBRL } from "@/lib/calculations";
+import { Calculator, Download } from "lucide-react";
+import { solvePrice, formatBRL, monthlyToAnnual, generateAmortTable } from "@/lib/calculations";
+import { exportCSV, exportExcel, exportJSON } from "@/lib/exports";
+import { createBrandedDoc, finalizeBrandedDoc, getContentStartY, drawSummaryCards, drawSectionTitle, drawKeyValueRows, drawBrandedTable } from "@/lib/pdfBranded";
 
 interface Props {
   caso: any;
@@ -10,11 +12,12 @@ interface Props {
 
 export function Etapa1Calculadora({ caso, onSave, saving }: Props) {
   const c = (caso.contrato as any) || {};
+  const sim = (caso.simulacao as any) || {};
   const [nMeses, setNMeses] = useState(c.prazoMeses || "");
   const [taxaMensal, setTaxaMensal] = useState(c.taxaMensal || "");
   const [pmt, setPmt] = useState(c.parcela || "");
   const [pv, setPv] = useState(c.valorFinanciado || "");
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<any>(sim.resultado || null);
 
   const handleCalc = () => {
     const inputs = {
@@ -45,6 +48,68 @@ export function Etapa1Calculadora({ caso, onSave, saving }: Props) {
       parcela: pmt,
       valorFinanciado: pv,
     });
+    if (result) {
+      onSave("simulacao", { resultado: result });
+    }
+  };
+
+  const handleExport = (format: string) => {
+    if (!result) return;
+    const taxaA = monthlyToAnnual(result.j) * 100;
+    const totalPago = result.pmt * result.n;
+    const totalJuros = totalPago - result.pv;
+
+    if (format === "pdf") {
+      const opts = {
+        title: "Simulação — Calculadora Price",
+        subtitle: `Metodologia BCB — ${caso.codigo}`,
+        clienteNome: caso.clientes?.nome || "",
+        banco: c.banco || c.instituicao || "",
+        codigo: caso.codigo,
+      };
+      const doc = createBrandedDoc(opts);
+      let y = getContentStartY(opts);
+
+      y = drawSummaryCards(doc, [
+        { label: "Valor Financiado", value: `R$ ${formatBRL(result.pv)}`, color: "navy" },
+        { label: "Prestação", value: `R$ ${formatBRL(result.pmt)}`, color: "blue" },
+        { label: "Taxa Mensal", value: `${(result.j * 100).toFixed(4)}%`, color: "gold" },
+        { label: "Prazo", value: `${result.n} meses`, color: "green" },
+      ], y);
+
+      y = drawSectionTitle(doc, "Resumo do Cálculo", y);
+      y = drawKeyValueRows(doc, [
+        { label: "Valor Financiado (PV)", value: `R$ ${formatBRL(result.pv)}` },
+        { label: "Prestação Mensal (PMT)", value: `R$ ${formatBRL(result.pmt)}` },
+        { label: "Taxa Mensal (j)", value: `${(result.j * 100).toFixed(4)}%` },
+        { label: "Taxa Anual", value: `${taxaA.toFixed(4)}%` },
+        { label: "Nº de Parcelas (n)", value: String(result.n) },
+        { label: "Total Pago", value: `R$ ${formatBRL(totalPago)}`, bold: true, color: "navy" },
+        { label: "Total de Juros", value: `R$ ${formatBRL(totalJuros)}`, bold: true, color: "red" },
+      ], y);
+
+      y = drawSectionTitle(doc, "Tabela de Amortização (Price)", y);
+      const { rows } = generateAmortTable(result.pv, result.j, result.n);
+      const head = ["Mês", "Prestação", "Juros", "Amortização", "Saldo Devedor"];
+      const body = rows.map(r => [String(r.mes), `R$ ${formatBRL(r.pmt)}`, `R$ ${formatBRL(r.juros)}`, `R$ ${formatBRL(r.amort)}`, `R$ ${formatBRL(r.saldo)}`]);
+      drawBrandedTable(doc, head, body, y);
+
+      finalizeBrandedDoc(doc, `Calculadora_Price_${(caso.clientes?.nome || "caso").replace(/\s+/g, "_")}`);
+      return;
+    }
+
+    const data = [{
+      "Valor Financiado": `R$ ${formatBRL(result.pv)}`,
+      "Prestação": `R$ ${formatBRL(result.pmt)}`,
+      "Taxa Mensal": `${(result.j * 100).toFixed(4)}%`,
+      "Taxa Anual": `${taxaA.toFixed(4)}%`,
+      "Prazo": `${result.n} meses`,
+      "Total Pago": `R$ ${formatBRL(totalPago)}`,
+      "Total Juros": `R$ ${formatBRL(totalJuros)}`,
+    }];
+    if (format === "csv") exportCSV(data, `calculadora-${caso.codigo}`);
+    if (format === "excel") exportExcel(data, `calculadora-${caso.codigo}`);
+    if (format === "json") exportJSON(data[0], `calculadora-${caso.codigo}`);
   };
 
   const inputClass = "w-full px-3 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-colors";
@@ -98,14 +163,24 @@ export function Etapa1Calculadora({ caso, onSave, saving }: Props) {
       </div>
 
       {result && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <ResultCard label="Valor Financiado" value={`R$ ${formatBRL(result.pv)}`} />
-          <ResultCard label="Prestação" value={`R$ ${formatBRL(result.pmt)}`} />
-          <ResultCard label="Taxa Mensal" value={`${(result.j * 100).toFixed(4)}%`} />
-          <ResultCard label="Nº Meses" value={String(result.n)} />
-          <ResultCard label="Total Pago" value={`R$ ${formatBRL(result.pmt * result.n)}`} accent />
-          <ResultCard label="Total de Juros" value={`R$ ${formatBRL(result.pmt * result.n - result.pv)}`} accent />
-        </div>
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <ResultCard label="Valor Financiado" value={`R$ ${formatBRL(result.pv)}`} />
+            <ResultCard label="Prestação" value={`R$ ${formatBRL(result.pmt)}`} />
+            <ResultCard label="Taxa Mensal" value={`${(result.j * 100).toFixed(4)}%`} />
+            <ResultCard label="Nº Meses" value={String(result.n)} />
+            <ResultCard label="Total Pago" value={`R$ ${formatBRL(result.pmt * result.n)}`} accent />
+            <ResultCard label="Total de Juros" value={`R$ ${formatBRL(result.pmt * result.n - result.pv)}`} accent />
+          </div>
+
+          {/* Export buttons */}
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => handleExport("pdf")} className="px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium">📄 PDF</button>
+            <button onClick={() => handleExport("csv")} className="px-3 py-2 rounded-lg border border-input text-xs font-medium hover:bg-muted">📊 CSV</button>
+            <button onClick={() => handleExport("excel")} className="px-3 py-2 rounded-lg border border-input text-xs font-medium hover:bg-muted">📗 Excel</button>
+            <button onClick={() => handleExport("json")} className="px-3 py-2 rounded-lg border border-input text-xs font-medium hover:bg-muted">🔧 JSON</button>
+          </div>
+        </>
       )}
 
       <div className="flex justify-end">

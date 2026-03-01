@@ -42,15 +42,15 @@ function drawHeader(doc: jsPDF, pw: number, opts: BrandedPDFOptions) {
 
   // Logo text
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
+  doc.setFontSize(16);
   doc.setTextColor(...WHITE);
-  doc.text("⚖  JUROS JUSTOS", 14, 14);
+  doc.text("JUROS JUSTOS", 14, 14);
 
   // Tagline
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
+  doc.setFontSize(7);
   doc.setTextColor(180, 190, 210);
-  doc.text("Análise Revisional de Contratos Bancários", 14, 21);
+  doc.text("Análise Revisional de Contratos Bancários", 14, 20);
 
   // Date top-right
   doc.setFontSize(8);
@@ -59,7 +59,7 @@ function drawHeader(doc: jsPDF, pw: number, opts: BrandedPDFOptions) {
 
   // Report title block
   let y = 36;
-  doc.setFontSize(14);
+  doc.setFontSize(13);
   doc.setTextColor(...NAVY);
   doc.setFont("helvetica", "bold");
   doc.text(opts.title.toUpperCase(), 14, y);
@@ -74,55 +74,39 @@ function drawHeader(doc: jsPDF, pw: number, opts: BrandedPDFOptions) {
   }
 
   // Info bar
-  if (opts.clienteNome || opts.codigo || opts.banco) {
+  if (opts.clienteNome || opts.codigo || opts.banco || opts.contrato) {
     y += 2;
+    const infoItems: { label: string; value: string }[] = [];
+    if (opts.clienteNome) infoItems.push({ label: "Cliente", value: opts.clienteNome });
+    if (opts.banco) infoItems.push({ label: "Banco", value: opts.banco });
+    if (opts.codigo) infoItems.push({ label: "Código", value: opts.codigo });
+    if (opts.contrato) infoItems.push({ label: "Contrato", value: opts.contrato });
+
+    const cols = infoItems.length;
+    const colW = (pw - 28) / cols;
+
     doc.setFillColor(...LIGHT_BG);
     doc.roundedRect(14, y, pw - 28, 18, 2, 2, "F");
-    doc.setFontSize(8);
-    doc.setTextColor(...DARK);
+    doc.setFontSize(7.5);
 
-    const col1x = 18;
-    const col2x = pw / 3 + 5;
-    const col3x = (pw / 3) * 2;
-    const labelY = y + 6;
-    const valY = y + 12;
+    infoItems.forEach((item, i) => {
+      const cx = 18 + i * colW;
+      const labelY = y + 6;
+      const valY = y + 12;
 
-    if (opts.clienteNome) {
       doc.setFont("helvetica", "normal");
       doc.setTextColor(...GRAY);
-      doc.text("Cliente", col1x, labelY);
+      doc.text(item.label, cx, labelY);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(...DARK);
-      doc.text(opts.clienteNome, col1x, valY);
-    }
-
-    if (opts.banco) {
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(...GRAY);
-      doc.text("Banco", col2x, labelY);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(...DARK);
-      doc.text(opts.banco, col2x, valY);
-    }
-
-    if (opts.codigo) {
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(...GRAY);
-      doc.text("Código", col3x, labelY);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(...DARK);
-      doc.text(opts.codigo, col3x, valY);
-    }
-
-    if (opts.contrato) {
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(...GRAY);
-      const cx = opts.banco ? col3x : col2x;
-      doc.text("Contrato", cx, labelY);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(...DARK);
-      doc.text(opts.contrato, cx, valY);
-    }
+      // Truncate long values to fit column
+      const maxW = colW - 6;
+      let val = item.value;
+      while (doc.getTextWidth(val) > maxW && val.length > 3) {
+        val = val.slice(0, -1);
+      }
+      doc.text(val, cx, valY);
+    });
   }
 }
 
@@ -198,35 +182,49 @@ export function drawSummaryCards(doc: jsPDF, cards: { label: string; value: stri
   const gap = 3;
   const count = cards.length;
   const cardW = (pw - margin * 2 - gap * (count - 1)) / count;
-  const cardH = 18;
+  const cardH = 20;
 
   const colorMap = {
     navy: NAVY,
     gold: GOLD,
     green: GREEN,
-    red: RED,
+    red: [180, 40, 40] as [number, number, number],
     blue: BLUE,
+  };
+
+  // Text color per card bg: use dark text on gold for contrast
+  const textColorMap: Record<string, [number, number, number]> = {
+    navy: WHITE,
+    gold: DARK,
+    green: WHITE,
+    red: WHITE,
+    blue: WHITE,
   };
 
   cards.forEach((card, i) => {
     const x = margin + i * (cardW + gap);
     const bgColor = card.color ? colorMap[card.color] : NAVY;
+    const txtColor = card.color ? (textColorMap[card.color] || WHITE) : WHITE;
 
-    // Card background
     doc.setFillColor(...bgColor);
     doc.roundedRect(x, y, cardW, cardH, 2, 2, "F");
 
     // Label
-    doc.setFontSize(6.5);
-    doc.setTextColor(255, 255, 255, 0.8);
+    doc.setFontSize(6);
+    doc.setTextColor(txtColor[0], txtColor[1], txtColor[2]);
     doc.setFont("helvetica", "normal");
-    doc.text(card.label.toUpperCase(), x + cardW / 2, y + 6, { align: "center" });
+    doc.text(card.label.toUpperCase(), x + cardW / 2, y + 7, { align: "center" });
 
-    // Value
-    doc.setFontSize(10);
-    doc.setTextColor(...WHITE);
+    // Value - fit to card width
     doc.setFont("helvetica", "bold");
-    doc.text(card.value, x + cardW / 2, y + 13.5, { align: "center" });
+    let fontSize = 10;
+    doc.setFontSize(fontSize);
+    while (doc.getTextWidth(card.value) > cardW - 6 && fontSize > 6) {
+      fontSize -= 0.5;
+      doc.setFontSize(fontSize);
+    }
+    doc.setTextColor(txtColor[0], txtColor[1], txtColor[2]);
+    doc.text(card.value, x + cardW / 2, y + 15, { align: "center" });
   });
 
   return y + cardH + 6;
@@ -292,28 +290,47 @@ export function drawBrandedTable(doc: jsPDF, head: string[], body: string[][], s
 // ── Highlight box ──
 export function drawHighlightBox(doc: jsPDF, rows: { label: string; value: string; big?: boolean }[], y: number, color: "green" | "gold" | "navy" = "green"): number {
   const pw = doc.internal.pageSize.getWidth();
+  const ph = doc.internal.pageSize.getHeight();
   const colorMap = { green: GREEN, gold: GOLD, navy: NAVY };
   const bgMap: Record<string, [number, number, number]> = { green: [230, 245, 235], gold: [255, 248, 225], navy: [230, 235, 245] };
   const c = colorMap[color];
   const bg = bgMap[color];
 
-  const boxH = 8 + rows.length * 8;
+  const rowH = 9;
+  const boxH = 10 + rows.length * rowH;
+  
+  // Page break if needed
+  if (y + boxH > ph - 30) {
+    doc.addPage();
+    y = 20;
+  }
+
   doc.setFillColor(bg[0], bg[1], bg[2]);
   doc.setDrawColor(...c);
   doc.setLineWidth(0.5);
   doc.roundedRect(14, y, pw - 28, boxH, 2, 2, "FD");
 
-  let ry = y + 6;
+  let ry = y + 7;
   rows.forEach((row) => {
-    doc.setFontSize(row.big ? 11 : 8.5);
+    const labelSize = row.big ? 10 : 8;
+    const valueSize = row.big ? 11 : 8.5;
+    
+    doc.setFontSize(labelSize);
     doc.setFont("helvetica", row.big ? "bold" : "normal");
     doc.setTextColor(...DARK);
     doc.text(row.label, 20, ry);
 
+    doc.setFontSize(valueSize);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...c);
-    doc.text(row.value, pw - 20, ry, { align: "right" });
-    ry += 8;
+    // Ensure value fits
+    const maxValW = (pw - 28) / 2 - 4;
+    let val = row.value;
+    while (doc.getTextWidth(val) > maxValW && val.length > 5) {
+      val = val.slice(0, -1);
+    }
+    doc.text(val, pw - 20, ry, { align: "right" });
+    ry += rowH;
   });
 
   return y + boxH + 6;
