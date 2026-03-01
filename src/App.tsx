@@ -8,6 +8,7 @@ import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Clientes from "@/pages/Clientes";
 import Casos from "@/pages/Casos";
+import CasoDetalhe from "@/pages/CasoDetalhe";
 import Templates from "@/pages/Templates";
 import NotFound from "@/pages/NotFound";
 
@@ -30,6 +31,7 @@ function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/clientes" element={<Clientes />} />
               <Route path="/casos" element={<Casos />} />
+              <Route path="/casos/:id" element={<CasoDetalhe />} />
               <Route path="/templates" element={<Templates />} />
             </Route>
             <Route path="*" element={<NotFound />} />

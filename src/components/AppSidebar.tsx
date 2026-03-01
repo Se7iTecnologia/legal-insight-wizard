@@ -1,13 +1,9 @@
 import { NavLink } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  LayoutDashboard,
-  Users,
-  Briefcase,
-  FileText,
-  LogOut,
-  Scale,
+  LayoutDashboard, Users, Briefcase, FileText, LogOut, Scale, Menu, X,
 } from "lucide-react";
+import { useState } from "react";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
@@ -18,9 +14,10 @@ const navItems = [
 
 export function AppSidebar() {
   const { signOut, user } = useAuth();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-  return (
-    <aside className="fixed left-0 top-0 h-screen w-64 bg-sidebar text-sidebar-foreground flex flex-col z-50">
+  const sidebarContent = (
+    <>
       <div className="p-6 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-sidebar-primary flex items-center justify-center">
@@ -39,6 +36,7 @@ export function AppSidebar() {
             key={item.to}
             to={item.to}
             end={item.to === "/"}
+            onClick={() => setMobileOpen(false)}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 isActive
@@ -63,6 +61,36 @@ export function AppSidebar() {
           Sair
         </button>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile hamburger */}
+      <button
+        onClick={() => setMobileOpen(true)}
+        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-card border border-border shadow-sm"
+      >
+        <Menu className="w-5 h-5 text-foreground" />
+      </button>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div className="md:hidden fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
+          <aside className="relative h-full w-64 bg-sidebar text-sidebar-foreground flex flex-col">
+            <button onClick={() => setMobileOpen(false)} className="absolute right-3 top-3 p-1 text-sidebar-foreground/60 hover:text-sidebar-foreground">
+              <X className="w-5 h-5" />
+            </button>
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
+
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex fixed left-0 top-0 h-screen w-64 bg-sidebar text-sidebar-foreground flex-col z-50">
+        {sidebarContent}
+      </aside>
+    </>
   );
 }
