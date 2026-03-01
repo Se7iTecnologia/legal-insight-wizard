@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { Save, FileDown, RotateCcw } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { PlanilhaData, Tarifa, defaultPlanilhaData, defaultTarifas, safeFloat, safeInt, totalTarifas, calcCarenciaDias, gerarTabelaAmortizacao, fmtMoney } from "./planilha/planilhaCalcs";
+import { PlanilhaData, Tarifa, defaultPlanilhaData, defaultTarifas, safeFloat, safeInt, totalTarifas, calcCarenciaDias, gerarTabelaAmortizacao, fmtMoney } from "./planilha/planilhaCalcs.tsx";
 import { TabResumo } from "./planilha/TabResumo";
 import { TabProjecaoSaldo } from "./planilha/TabProjecaoSaldo";
 import { TabPrestacaoDevida } from "./planilha/TabPrestacaoDevida";
