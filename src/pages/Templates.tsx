@@ -1,6 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, FileText } from "lucide-react";
+import { Plus, FileText, Pencil, Trash2 } from "lucide-react";
+import { TemplateForm } from "@/components/TemplateForm";
+import { ConfirmDelete } from "@/components/ConfirmDelete";
+import { toast } from "sonner";
 
 interface Template {
   id: string;
@@ -13,15 +16,33 @@ interface Template {
 export default function Templates() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
-    async function fetch() {
-      const { data } = await supabase.from("templates").select("id, nome, tipo, descricao, atualizado_em").order("nome");
-      setTemplates(data ?? []);
-      setLoading(false);
-    }
-    fetch();
+  const fetchTemplates = useCallback(async () => {
+    const { data } = await supabase.from("templates").select("id, nome, tipo, descricao, atualizado_em").order("nome");
+    setTemplates(data ?? []);
+    setLoading(false);
   }, []);
+
+  useEffect(() => { fetchTemplates(); }, [fetchTemplates]);
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    setDeleting(true);
+    const { error } = await supabase.from("templates").delete().eq("id", deleteId);
+    if (error) toast.error("Erro ao excluir: " + error.message);
+    else { toast.success("Template excluído!"); fetchTemplates(); }
+    setDeleteId(null);
+    setDeleting(false);
+  };
+
+  const tipoLabel: Record<string, string> = {
+    custom: "Personalizado", proposta: "Proposta", honorarios: "Honorários",
+    procuracao: "Procuração", hipossuficiencia: "Hipossuficiência", peticao: "Petição",
+  };
 
   return (
     <div className="animate-fade-in">
@@ -30,9 +51,9 @@ export default function Templates() {
           <h1 className="text-2xl font-bold text-foreground">Templates</h1>
           <p className="text-muted-foreground mt-1">Modelos de documentos</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
+        <button onClick={() => { setEditId(null); setFormOpen(true); }} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
           <Plus className="w-4 h-4" />
-          Novo Template
+          <span className="hidden sm:inline">Novo Template</span>
         </button>
       </div>
 
@@ -46,21 +67,28 @@ export default function Templates() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {templates.map((t) => (
-            <div key={t.id} className="bg-card rounded-xl border border-border p-5 hover:shadow-md transition-shadow cursor-pointer">
+            <div key={t.id} className="bg-card rounded-xl border border-border p-5 hover:shadow-md transition-shadow group">
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-lg bg-[hsl(var(--primary))]/10 flex items-center justify-center shrink-0">
                   <FileText className="w-5 h-5 text-primary" />
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <h3 className="font-medium text-foreground truncate">{t.nome}</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">{t.tipo}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{tipoLabel[t.tipo] || t.tipo}</p>
                   {t.descricao && <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{t.descricao}</p>}
+                </div>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => { setEditId(t.id); setFormOpen(true); }} className="p-1.5 rounded-md hover:bg-muted transition-colors"><Pencil className="w-3.5 h-3.5 text-muted-foreground" /></button>
+                  <button onClick={() => setDeleteId(t.id)} className="p-1.5 rounded-md hover:bg-destructive/10 transition-colors"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
                 </div>
               </div>
             </div>
           ))}
         </div>
       )}
+
+      <TemplateForm open={formOpen} onOpenChange={setFormOpen} templateId={editId} onSaved={fetchTemplates} />
+      <ConfirmDelete open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)} onConfirm={handleDelete} loading={deleting} />
     </div>
   );
 }

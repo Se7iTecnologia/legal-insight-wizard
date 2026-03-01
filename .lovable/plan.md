@@ -2,21 +2,36 @@
 
 ## Situação Atual
 
-O projeto **ainda não foi restaurado**. O diretório `src/` continua vazio e o preview mostra uma tela em branco. A restauração pelo Histórico ainda precisa ser feita por você.
+O projeto foi **recriado com sucesso** com todas as funcionalidades principais restauradas.
 
-## Como restaurar
+## Funcionalidades Implementadas
 
-Você precisa acessar o **Histórico do projeto** e selecionar uma versão anterior que tinha o código funcionando:
+### ✅ Autenticação
+- Login/Signup com Supabase Auth
+- Rotas protegidas com ProtectedRoute
+- Logout funcional
 
-1. **Desktop**: Clique no botão **+** no canto inferior esquerdo do chat e selecione **"History"**, ou clique no ícone de relógio na barra de navegação superior.
-2. **Mobile**: Mude para o modo Preview, depois toque no ícone de relógio no canto inferior esquerdo, ou toque em **"..."** no canto inferior direito.
+### ✅ CRUD Completo
+- **Clientes**: Cadastro, edição, exclusão com formulário completo (nome, CPF, RG, email, telefone, endereço, estado civil, profissão, etc.)
+- **Casos**: Criação vinculada a cliente, código automático (REV-YYYY-NNNN), exclusão com cascade em documentos
+- **Templates**: CRUD com tipos (Proposta, Honorários, Procuração, etc.), variáveis dinâmicas
 
-3. Na lista de versões, procure uma versão anterior que mostre o sistema funcionando (antes de os arquivos terem sido apagados).
-4. Clique em **"Restore"** nessa versão.
+### ✅ Wizard de Análise (5 Etapas)
+1. **Calculadora Price**: Cálculo de PMT, detecção de diferença entre parcela contratada e calculada
+2. **BACEN (SGS)**: Registro de taxas SELIC, CDI, taxa média da modalidade
+3. **Planilha Revisional**: Tabela de amortização, registro de tarifas abusivas com cálculo automático
+4. **Valores a Receber**: Resumo de valores (diferença de juros + tarifas irregulares)
+5. **Documentos/Petições**: Listagem de documentos vinculados ao caso
 
-Depois de restaurar, me avise e eu verifico se tudo voltou a funcionar.
+### ✅ Responsividade Mobile
+- Sidebar com menu hambúrguer colapsável
+- Cards responsivos para listagens em telas pequenas
+- Layout adaptativo com breakpoints MD
 
-## Plano alternativo (se não houver versão para restaurar)
+### ✅ Edge Function
+- `manage-users`: Admin SDK para listar, criar, excluir usuários e atribuir roles
 
-Se o histórico não tiver uma versão com o código completo, será necessário **recriar a estrutura do projeto do zero** — criando `src/main.tsx`, `src/App.tsx`, páginas, componentes, e toda a base necessária para o sistema funcionar novamente.
-
+## Estrutura de Dados (Supabase)
+- `clientes`, `casos`, `documentos_caso`, `templates`, `user_roles`
+- Bucket de storage: `contratos`
+- Roles: admin, advogado, operador
