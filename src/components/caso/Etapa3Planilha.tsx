@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { DollarSign, Trash2, Plus } from "lucide-react";
 import { formatBRL, monthlyToAnnual, monthlyToDaily, generateAmortTable } from "@/lib/calculations";
-import { exportPDF, exportCSV, exportExcel, exportJSON } from "@/lib/exports";
+import { exportCSV, exportExcel, exportJSON } from "@/lib/exports";
+import { createBrandedDoc, finalizeBrandedDoc, getContentStartY, drawSummaryCards, drawSectionTitle, drawBrandedTable, drawKeyValueRows } from "@/lib/pdfBranded";
 
 interface Props {
   caso: any;
@@ -62,8 +63,44 @@ export function Etapa3Planilha({ caso, onSave, saving }: Props) {
       Mês: r.mes, Prestação: formatBRL(r.pmt), Juros: formatBRL(r.juros),
       Amortização: formatBRL(r.amort), Saldo: formatBRL(r.saldo),
     }));
-    const title = `Planilha Revisional - ${caso.codigo}`;
-    if (format === "pdf") exportPDF(title, data, `planilha-${caso.codigo}`);
+
+    if (format === "pdf") {
+      const opts = {
+        title: "Planilha Revisional",
+        subtitle: `Sistema Price — ${caso.codigo}`,
+        clienteNome: caso.clientes?.nome || "",
+        banco: form.banco,
+        codigo: caso.codigo,
+        contrato: form.contratoN,
+      };
+      const doc = createBrandedDoc(opts);
+      let y = getContentStartY(opts);
+
+      y = drawSummaryCards(doc, [
+        { label: "Valor Financiado", value: `R$ ${formatBRL(pv)}`, color: "navy" },
+        { label: "Parcela", value: `R$ ${formatBRL(parseFloat(form.parcela))}`, color: "blue" },
+        { label: "Taxa Mensal", value: `${parseFloat(form.taxaMensal).toFixed(4)}%`, color: "gold" },
+        { label: "Prazo", value: `${n} meses`, color: "green" },
+      ], y);
+
+      y = drawSectionTitle(doc, "Dados do Contrato", y);
+      y = drawKeyValueRows(doc, [
+        { label: "Cliente", value: form.cliente },
+        { label: "Banco", value: form.banco },
+        { label: "Taxa a.a.", value: `${taxaA.toFixed(4)}%` },
+        { label: "Média BACEN", value: mediaBacen ? `${mediaBacen.toFixed(4)}%` : "—" },
+        { label: "Variação", value: variacao ? `${variacao.toFixed(2)}%` : "—", color: variacao > 10 ? "red" : "green" },
+      ], y);
+
+      y = drawSectionTitle(doc, "Tabela de Amortização (Price)", y);
+      const head = ["Mês", "Prestação", "Juros", "Amortização", "Saldo Devedor"];
+      const body = rows.map(r => [String(r.mes), `R$ ${formatBRL(r.pmt)}`, `R$ ${formatBRL(r.juros)}`, `R$ ${formatBRL(r.amort)}`, `R$ ${formatBRL(r.saldo)}`]);
+      drawBrandedTable(doc, head, body, y);
+
+      finalizeBrandedDoc(doc, `Planilha_Revisional_${(caso.clientes?.nome || "caso").replace(/\s+/g, "_")}`);
+      return;
+    }
+
     if (format === "csv") exportCSV(data, `planilha-${caso.codigo}`);
     if (format === "excel") exportExcel(data, `planilha-${caso.codigo}`);
     if (format === "json") exportJSON({ contrato: form, tarifas, amortizacao: rows }, `planilha-${caso.codigo}`);
