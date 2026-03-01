@@ -25,15 +25,15 @@ export function Etapa3Planilha({ caso, onSave, saving }: Props) {
     return {
       ...defaultPlanilhaData,
       cliente: caso.clientes?.nome || p.cliente || "",
-      banco: c.instituicao || c.banco || p.banco || "",
-      contratoN: c.contratoN || p.contratoN || "",
-      dataContratacao: c.dataContrato || c.dataContratacao || p.dataContratacao || "",
-      primeiraParcela: c.primeiraParcela || p.primeiraParcela || "",
-      taxaMensal: c.taxaMensal || p.taxaMensal || "",
-      prestacao: c.parcela || p.prestacao || "",
-      valorFinanciado: c.valorFinanciado || p.valorFinanciado || "",
-      prazo: c.prazoMeses || p.prazo || "",
-      parcelasPagas: c.parcelasPagas || p.parcelasPagas || "0",
+      banco: p.banco || c.instituicao || c.banco || "",
+      contratoN: p.contratoN || c.contratoN || "",
+      dataContratacao: p.dataContratacao || c.dataContrato || c.dataContratacao || "",
+      primeiraParcela: p.primeiraParcela || c.primeiraParcela || "",
+      taxaMensal: p.taxaMensal || c.taxaMensal || "",
+      prestacao: p.prestacao || c.parcela || "",
+      valorFinanciado: p.valorFinanciado || c.valorFinanciado || "",
+      prazo: p.prazo || c.prazoMeses || "",
+      parcelasPagas: p.parcelasPagas || c.parcelasPagas || "0",
       taxaMediaMercado: p.taxaMediaMercado || "",
       houveRenegociacao: p.houveRenegociacao || false,
       taxaProjecao: p.taxaProjecao || "",
@@ -54,9 +54,22 @@ export function Etapa3Planilha({ caso, onSave, saving }: Props) {
     setData(prev => ({ ...prev, ...partial }));
   }, []);
 
-  const handleSave = () => {
-    onSave("contrato", { ...caso.contrato, planilha: data });
-    onSave("tarifas", tarifas);
+  const handleSave = async () => {
+    const contratoAtualizado = {
+      ...caso.contrato,
+      planilha: data,
+      valorFinanciado: data.valorFinanciado,
+      taxaMensal: data.taxaMensal,
+      parcela: data.prestacao,
+      prazoMeses: data.prazo,
+      dataContrato: data.dataContratacao,
+      primeiraParcela: data.primeiraParcela,
+      contratoN: data.contratoN,
+      instituicao: data.banco,
+      parcelasPagas: data.parcelasPagas,
+    };
+    await onSave("contrato", contratoAtualizado);
+    await onSave("tarifas", tarifas);
     toast.success("Planilha salva!");
   };
 

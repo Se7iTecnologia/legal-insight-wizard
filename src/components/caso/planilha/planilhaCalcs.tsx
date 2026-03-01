@@ -181,15 +181,15 @@ export function gerarTabelaAmortizacao(params: {
 
 /* ── Field component ── */
 export function Field({ label, children, hint, badge }: { label: string; children: React.ReactNode; hint?: string; badge?: "yellow" | "green" | "purple" }) {
-  const badgeColors: Record<string, string> = {
-    yellow: "bg-amber-400 text-amber-950",
-    green: "bg-emerald-500 text-white",
-    purple: "bg-purple-500 text-white",
+  const dotColors: Record<string, string> = {
+    yellow: "bg-amber-400",
+    green: "bg-emerald-500",
+    purple: "bg-purple-500",
   };
   return (
     <div>
       <label className="text-xs font-medium text-foreground mb-1 flex items-center gap-1.5">
-        {badge && <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${badgeColors[badge]}`}>{badge === "yellow" ? "INPUT" : badge === "green" ? "AUTO" : "REF"}</span>}
+        {badge && <span className={`inline-block w-2 h-2 rounded-full ${dotColors[badge]}`} />}
         {label}
         {hint && <span className="text-muted-foreground font-normal cursor-help" title={hint}>❓</span>}
       </label>
