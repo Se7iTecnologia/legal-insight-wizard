@@ -73,9 +73,9 @@ export function Etapa4Valores({ caso }: Props) {
 
     y = drawSectionTitle(doc, "Resultado Final Estimado", y, 5);
     y = drawHighlightBox(doc, [
-      { label: "Redução da Parcela", value: `R$ ${formatBRL(parcela)} → R$ ${formatBRL(parcelaCorrigida)}` },
+      { label: "Redução da Parcela", value: `R$ ${formatBRL(parcelaCorrigida)}` },
       { label: `Indébito a Receber (${parcelasPagas} pagas)`, value: `R$ ${formatBRL(indebitoPago)}` },
-      { label: `Retorno Econômico Total (${n} parcelas)`, value: `R$ ${formatBRL(valorRecuperar)}` },
+      { label: `Retorno Econômico (${n} parcelas)`, value: `R$ ${formatBRL(valorRecuperar)}` },
       { label: "Devolução em Dobro (CDC)", value: `R$ ${formatBRL(devolucaoDobro)}`, big: true },
     ], y, "green");
 

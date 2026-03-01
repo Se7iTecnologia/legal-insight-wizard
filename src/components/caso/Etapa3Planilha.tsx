@@ -27,6 +27,7 @@ export function Etapa3Planilha({ caso, onSave, saving }: Props) {
     parcela: c.parcela || "",
     valorFinanciado: c.valorFinanciado || "",
     prazoMeses: c.prazoMeses || "",
+    parcelasPagas: c.parcelasPagas || "0",
   });
 
   const [novaTarifa, setNovaTarifa] = useState({ descricao: "", valor: "" });
@@ -142,6 +143,8 @@ export function Etapa3Planilha({ caso, onSave, saving }: Props) {
             <input value={form.valorFinanciado} onChange={(e) => setForm({ ...form, valorFinanciado: e.target.value })} className={inputClass} /></div>
           <div><label className="text-xs font-medium text-foreground block mb-1">Prazo (meses) *</label>
             <input value={form.prazoMeses} onChange={(e) => setForm({ ...form, prazoMeses: e.target.value })} className={inputClass} /></div>
+          <div><label className="text-xs font-medium text-foreground block mb-1">Parcelas Pagas *</label>
+            <input type="number" min="0" value={form.parcelasPagas} onChange={(e) => setForm({ ...form, parcelasPagas: e.target.value })} className={inputClass} /></div>
         </div>
       </div>
 

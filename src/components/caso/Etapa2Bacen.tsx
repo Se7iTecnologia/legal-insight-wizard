@@ -1,9 +1,12 @@
 import { useState, useMemo } from "react";
-import { Search, ExternalLink, ChevronDown, ChevronUp, TrendingUp } from "lucide-react";
+import { Search, ExternalLink, ChevronDown, ChevronUp, TrendingUp, Download } from "lucide-react";
 import { BACEN_SERIES, getSeriesByGroup } from "@/lib/bacenSeries";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } from "recharts";
+import { formatBRL } from "@/lib/calculations";
+import { exportCSV, exportExcel, exportJSON } from "@/lib/exports";
+import { createBrandedDoc, finalizeBrandedDoc, getContentStartY, drawSummaryCards, drawSectionTitle, drawKeyValueRows, drawBrandedTable } from "@/lib/pdfBranded";
 
 interface Props {
   caso: any;
@@ -77,6 +80,54 @@ export function Etapa2Bacen({ caso, onSave, saving }: Props) {
 
   const handleSave = () => {
     onSave("bacen", { serieCodigo, dataInicial, dataFinal, taxaContratada, resultado, mediaBacen: mediaBacen.toFixed(4), excesso: excesso.toFixed(2) });
+  };
+
+  const handleExport = (format: string) => {
+    if (!resultado || !mediaBacen) return;
+    const serieName = selectedSerie?.nome || serieCodigo;
+
+    if (format === "pdf") {
+      const opts = {
+        title: "Consulta BACEN — Taxas de Juros",
+        subtitle: `Série ${serieCodigo} — ${serieName}`,
+        clienteNome: caso.clientes?.nome || "",
+        banco: c.banco || c.instituicao || "",
+        codigo: caso.codigo,
+      };
+      const doc = createBrandedDoc(opts);
+      let y = getContentStartY(opts);
+
+      y = drawSummaryCards(doc, [
+        { label: "Média BACEN", value: `${mediaBacen.toFixed(4)}%`, color: "blue" },
+        { label: "Taxa Contratada", value: `${taxaContr.toFixed(4)}%`, color: "navy" },
+        { label: "Excesso", value: `${excesso.toFixed(2)}%`, color: excesso > 10 ? "red" : "green" },
+      ], y);
+
+      y = drawSectionTitle(doc, "Dados da Consulta", y);
+      y = drawKeyValueRows(doc, [
+        { label: "Série", value: `${serieCodigo} — ${serieName}` },
+        { label: "Período", value: `${dataInicial} a ${dataFinal}` },
+        { label: "Registros encontrados", value: String(resultado.total || 0) },
+        { label: "Média do período", value: `${mediaBacen.toFixed(4)}%`, bold: true, color: "navy" },
+        { label: "Taxa contratada", value: `${taxaContr.toFixed(4)}%` },
+        { label: "Excesso sobre média", value: `${excesso.toFixed(2)}%`, bold: true, color: excesso > 10 ? "red" : "green" },
+      ], y);
+
+      if (Array.isArray(resultado.dados) && resultado.dados.length > 0) {
+        y = drawSectionTitle(doc, "Histórico de Taxas", y);
+        const head = ["Data", "Valor (%)"];
+        const body = resultado.dados.map((d: any) => [d.data, String(d.valor)]);
+        drawBrandedTable(doc, head, body, y);
+      }
+
+      finalizeBrandedDoc(doc, `Consulta_BACEN_${serieCodigo}_${(caso.clientes?.nome || "caso").replace(/\s+/g, "_")}`);
+      return;
+    }
+
+    const data = Array.isArray(resultado.dados) ? resultado.dados.map((d: any) => ({ Data: d.data, "Valor (%)": d.valor })) : [];
+    if (format === "csv") exportCSV(data, `bacen-${serieCodigo}-${caso.codigo}`);
+    if (format === "excel") exportExcel(data, `bacen-${serieCodigo}-${caso.codigo}`);
+    if (format === "json") exportJSON({ serie: serieCodigo, nome: serieName, media: mediaBacen, dados: resultado.dados }, `bacen-${serieCodigo}-${caso.codigo}`);
   };
 
   const inputClass = "w-full px-3 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring";
@@ -194,6 +245,14 @@ export function Etapa2Bacen({ caso, onSave, saving }: Props) {
               </ResponsiveContainer>
             </div>
           )}
+
+          {/* Export buttons */}
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => handleExport("pdf")} className="px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium">📄 PDF</button>
+            <button onClick={() => handleExport("csv")} className="px-3 py-2 rounded-lg border border-input text-xs font-medium hover:bg-muted">📊 CSV</button>
+            <button onClick={() => handleExport("excel")} className="px-3 py-2 rounded-lg border border-input text-xs font-medium hover:bg-muted">📗 Excel</button>
+            <button onClick={() => handleExport("json")} className="px-3 py-2 rounded-lg border border-input text-xs font-medium hover:bg-muted">🔧 JSON</button>
+          </div>
         </div>
       )}
 
