@@ -1,8 +1,16 @@
-import { useState } from "react";
-import { DollarSign, Trash2, Plus } from "lucide-react";
-import { formatBRL, monthlyToAnnual, monthlyToDaily, generateAmortTable } from "@/lib/calculations";
+import { useState, useMemo, useCallback } from "react";
+import { Save, FileDown, RotateCcw } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { PlanilhaData, Tarifa, defaultPlanilhaData, defaultTarifas, safeFloat, safeInt, totalTarifas, calcCarenciaDias, gerarTabelaAmortizacao, fmtMoney } from "./planilha/planilhaCalcs";
+import { TabResumo } from "./planilha/TabResumo";
+import { TabProjecaoSaldo } from "./planilha/TabProjecaoSaldo";
+import { TabPrestacaoDevida } from "./planilha/TabPrestacaoDevida";
+import { TabRenegProjecao } from "./planilha/TabRenegProjecao";
+import { TabRenegPrestacao } from "./planilha/TabRenegPrestacao";
 import { exportCSV, exportExcel, exportJSON } from "@/lib/exports";
 import { createBrandedDoc, finalizeBrandedDoc, getContentStartY, drawSummaryCards, drawSectionTitle, drawBrandedTable, drawKeyValueRows } from "@/lib/pdfBranded";
+import { formatBRL, calcPMT } from "@/lib/calculations";
+import { toast } from "sonner";
 
 interface Props {
   caso: any;
@@ -11,218 +19,229 @@ interface Props {
 }
 
 export function Etapa3Planilha({ caso, onSave, saving }: Props) {
-  const c = (caso.contrato as any) || {};
-  const b = (caso.bacen as any) || {};
-  const tarifas = Array.isArray(caso.tarifas) ? (caso.tarifas as any[]) : [];
-
-  const [form, setForm] = useState({
-    cliente: caso.clientes?.nome || "",
-    banco: c.instituicao || c.banco || "",
-    contratoN: c.contratoN || "",
-    dataContratacao: c.dataContrato || c.dataContratacao || "",
-    primeiraParcela: c.primeiraParcela || "",
-    carencia: c.carencia || "30",
-    taxaMensal: c.taxaMensal || "",
-    taxaAnual: "",
-    parcela: c.parcela || "",
-    valorFinanciado: c.valorFinanciado || "",
-    prazoMeses: c.prazoMeses || "",
-    parcelasPagas: c.parcelasPagas || "0",
+  const [data, setData] = useState<PlanilhaData>(() => {
+    const p = caso.contrato?.planilha || {};
+    const c = caso.contrato || {};
+    return {
+      ...defaultPlanilhaData,
+      cliente: caso.clientes?.nome || p.cliente || "",
+      banco: c.instituicao || c.banco || p.banco || "",
+      contratoN: c.contratoN || p.contratoN || "",
+      dataContratacao: c.dataContrato || c.dataContratacao || p.dataContratacao || "",
+      primeiraParcela: c.primeiraParcela || p.primeiraParcela || "",
+      taxaMensal: c.taxaMensal || p.taxaMensal || "",
+      prestacao: c.parcela || p.prestacao || "",
+      valorFinanciado: c.valorFinanciado || p.valorFinanciado || "",
+      prazo: c.prazoMeses || p.prazo || "",
+      parcelasPagas: c.parcelasPagas || p.parcelasPagas || "0",
+      taxaMediaMercado: p.taxaMediaMercado || "",
+      houveRenegociacao: p.houveRenegociacao || false,
+      taxaProjecao: p.taxaProjecao || "",
+      saldoRefinanciadoIdx: p.saldoRefinanciadoIdx ?? -1,
+      reneg: { ...defaultPlanilhaData.reneg, ...(p.reneg || {}) },
+    };
   });
 
-  const [novaTarifa, setNovaTarifa] = useState({ descricao: "", valor: "" });
+  const [tarifas, setTarifas] = useState<Tarifa[]>(() => {
+    const t = caso.tarifas;
+    if (Array.isArray(t) && t.length > 0) return t;
+    return defaultTarifas;
+  });
 
-  const taxaM = parseFloat(form.taxaMensal) / 100 || 0;
-  const taxaA = taxaM ? monthlyToAnnual(taxaM) * 100 : 0;
-  const taxaD = taxaM ? monthlyToDaily(taxaM) * 100 : 0;
-  const mediaBacen = parseFloat(b.mediaBacen) || 0;
-  const variacao = mediaBacen && taxaM ? ((parseFloat(form.taxaMensal) - mediaBacen) / mediaBacen * 100) : 0;
+  const [activeTab, setActiveTab] = useState("resumo");
 
-  const totalTarifas = tarifas.reduce((sum: number, t: any) => sum + (parseFloat(t.valor) || 0), 0);
-
-  const addTarifa = () => {
-    if (!novaTarifa.descricao || !novaTarifa.valor) return;
-    const updated = [...tarifas, { ...novaTarifa, id: Date.now().toString() }];
-    onSave("tarifas", updated);
-    setNovaTarifa({ descricao: "", valor: "" });
-  };
-
-  const removeTarifa = (idx: number) => {
-    onSave("tarifas", tarifas.filter((_, i) => i !== idx));
-  };
+  const handleChange = useCallback((partial: Partial<PlanilhaData>) => {
+    setData(prev => ({ ...prev, ...partial }));
+  }, []);
 
   const handleSave = () => {
-    onSave("contrato", { ...c, ...form });
+    onSave("contrato", { ...caso.contrato, planilha: data });
+    onSave("tarifas", tarifas);
+    toast.success("Planilha salva!");
   };
 
-  const handleExport = (format: string) => {
-    const pv = parseFloat(form.valorFinanciado) || 0;
-    const n = parseInt(form.prazoMeses) || 0;
-    if (!pv || !taxaM || !n) return;
-    const { rows } = generateAmortTable(pv, taxaM, n);
-    const data = rows.map(r => ({
-      Mês: r.mes, Prestação: formatBRL(r.pmt), Juros: formatBRL(r.juros),
-      Amortização: formatBRL(r.amort), Saldo: formatBRL(r.saldo),
+  const handleReset = () => {
+    if (!confirm("Limpar todos os dados da planilha?")) return;
+    setData({ ...defaultPlanilhaData });
+    setTarifas(defaultTarifas);
+    toast.info("Dados limpos");
+  };
+
+  // Calculate saldo from Tab 3 for renegociação tabs
+  const saldoCorretoTab3 = useMemo(() => {
+    const vf = safeFloat(data.valorFinanciado);
+    const tt = totalTarifas(tarifas);
+    const valorTotal = Math.max(0, vf - tt);
+    const taxaProj = safeFloat(data.taxaProjecao || data.taxaMediaMercado) / 100;
+    const prazo = safeInt(data.prazo);
+    const prestBanco = safeFloat(data.prestacao);
+    const diasCarencia = calcCarenciaDias(data.dataContratacao, data.primeiraParcela);
+    const parcelasPagas = safeInt(data.parcelasPagas);
+
+    if (!valorTotal || !taxaProj || !prazo) return 0;
+    const tabela = gerarTabelaAmortizacao({
+      valorBase: valorTotal, taxa: taxaProj, prazo,
+      dataContratacao: data.dataContratacao, primeiraParcela: data.primeiraParcela,
+      diasCarencia, prestacaoFixa: prestBanco,
+    });
+    const idx = data.saldoRefinanciadoIdx >= 0 ? data.saldoRefinanciadoIdx : parcelasPagas + (diasCarencia > 0 ? 1 : 0);
+    return idx >= 0 && idx < tabela.rows.length ? tabela.rows[idx].saldo : 0;
+  }, [data, tarifas]);
+
+  const handleExportPDF = () => {
+    const vf = safeFloat(data.valorFinanciado);
+    const tt = totalTarifas(tarifas);
+    const taxaProj = safeFloat(data.taxaProjecao || data.taxaMediaMercado) / 100;
+    const prazo = safeInt(data.prazo);
+    const prestBanco = safeFloat(data.prestacao);
+    const diasCarencia = calcCarenciaDias(data.dataContratacao, data.primeiraParcela);
+    const valorTotal = Math.max(0, vf - tt);
+
+    if (!valorTotal || !taxaProj || !prazo) { toast.error("Preencha os dados do Resumo"); return; }
+
+    const tabela = gerarTabelaAmortizacao({
+      valorBase: valorTotal, taxa: taxaProj, prazo,
+      dataContratacao: data.dataContratacao, primeiraParcela: data.primeiraParcela,
+      diasCarencia, prestacaoFixa: prestBanco,
+    });
+
+    const opts = {
+      title: "Planilha Revisional",
+      subtitle: `Sistema Price — ${caso.codigo}`,
+      clienteNome: data.cliente,
+      banco: data.banco,
+      codigo: caso.codigo,
+      contrato: data.contratoN,
+    };
+    const doc = createBrandedDoc(opts);
+    let y = getContentStartY(opts);
+
+    y = drawSummaryCards(doc, [
+      { label: "Valor Financiado", value: `R$ ${formatBRL(vf)}`, color: "navy" },
+      { label: "Valor Correto", value: `R$ ${formatBRL(valorTotal)}`, color: "blue" },
+      { label: "Taxa Projeção", value: `${(taxaProj * 100).toFixed(4)}% a.m.`, color: "gold" },
+      { label: "Prazo", value: `${prazo} meses`, color: "green" },
+    ], y);
+
+    y = drawSectionTitle(doc, "Tabela de Amortização — Projeção", y);
+    const head = ["Prazo", "Data", "Amortização", "Juros", "Prestação", "Saldo Devedor"];
+    const body = tabela.rows.map(r => [
+      r.label || String(r.prazo),
+      r.data,
+      r.label === "CONTRATAÇÃO" ? "—" : fmtMoney(r.amortizacao),
+      r.label === "CONTRATAÇÃO" ? "—" : fmtMoney(r.juros),
+      r.label === "CONTRATAÇÃO" ? "—" : fmtMoney(r.prestacao),
+      fmtMoney(r.saldo),
+    ]);
+    drawBrandedTable(doc, head, body, y);
+
+    finalizeBrandedDoc(doc, `Planilha_Revisional_${(data.cliente || "caso").replace(/\s+/g, "_")}`);
+  };
+
+  const handleExportData = (format: string) => {
+    const vf = safeFloat(data.valorFinanciado);
+    const tt = totalTarifas(tarifas);
+    const taxaProj = safeFloat(data.taxaProjecao || data.taxaMediaMercado) / 100;
+    const prazo = safeInt(data.prazo);
+    const prestBanco = safeFloat(data.prestacao);
+    const diasCarencia = calcCarenciaDias(data.dataContratacao, data.primeiraParcela);
+    const valorTotal = Math.max(0, vf - tt);
+
+    if (!valorTotal || !taxaProj || !prazo) { toast.error("Preencha os dados"); return; }
+
+    const tabela = gerarTabelaAmortizacao({
+      valorBase: valorTotal, taxa: taxaProj, prazo,
+      dataContratacao: data.dataContratacao, primeiraParcela: data.primeiraParcela,
+      diasCarencia, prestacaoFixa: prestBanco,
+    });
+
+    const rows = tabela.rows.map(r => ({
+      Prazo: r.label || r.prazo,
+      Data: r.data,
+      Amortização: r.amortizacao.toFixed(2),
+      Juros: r.juros.toFixed(2),
+      Prestação: r.prestacao.toFixed(2),
+      "Saldo Devedor": r.saldo.toFixed(2),
     }));
 
-    if (format === "pdf") {
-      const opts = {
-        title: "Planilha Revisional",
-        subtitle: `Sistema Price — ${caso.codigo}`,
-        clienteNome: caso.clientes?.nome || "",
-        banco: form.banco,
-        codigo: caso.codigo,
-        contrato: form.contratoN,
-      };
-      const doc = createBrandedDoc(opts);
-      let y = getContentStartY(opts);
-
-      y = drawSummaryCards(doc, [
-        { label: "Valor Financiado", value: `R$ ${formatBRL(pv)}`, color: "navy" },
-        { label: "Parcela", value: `R$ ${formatBRL(parseFloat(form.parcela))}`, color: "blue" },
-        { label: "Taxa Mensal", value: `${parseFloat(form.taxaMensal).toFixed(4)}%`, color: "gold" },
-        { label: "Prazo", value: `${n} meses`, color: "green" },
-      ], y);
-
-      y = drawSectionTitle(doc, "Dados do Contrato", y);
-      y = drawKeyValueRows(doc, [
-        { label: "Cliente", value: form.cliente },
-        { label: "Banco", value: form.banco },
-        { label: "Taxa a.a.", value: `${taxaA.toFixed(4)}%` },
-        { label: "Média BACEN", value: mediaBacen ? `${mediaBacen.toFixed(4)}%` : "—" },
-        { label: "Variação", value: variacao ? `${variacao.toFixed(2)}%` : "—", color: variacao > 10 ? "red" : "green" },
-      ], y);
-
-      y = drawSectionTitle(doc, "Tabela de Amortização (Price)", y);
-      const head = ["Mês", "Prestação", "Juros", "Amortização", "Saldo Devedor"];
-      const body = rows.map(r => [String(r.mes), `R$ ${formatBRL(r.pmt)}`, `R$ ${formatBRL(r.juros)}`, `R$ ${formatBRL(r.amort)}`, `R$ ${formatBRL(r.saldo)}`]);
-      drawBrandedTable(doc, head, body, y);
-
-      finalizeBrandedDoc(doc, `Planilha_Revisional_${(caso.clientes?.nome || "caso").replace(/\s+/g, "_")}`);
-      return;
-    }
-
-    if (format === "csv") exportCSV(data, `planilha-${caso.codigo}`);
-    if (format === "excel") exportExcel(data, `planilha-${caso.codigo}`);
-    if (format === "json") exportJSON({ contrato: form, tarifas, amortizacao: rows }, `planilha-${caso.codigo}`);
+    const name = `planilha-${caso.codigo}`;
+    if (format === "csv") exportCSV(rows, name);
+    if (format === "excel") exportExcel(rows, name);
+    if (format === "json") exportJSON({ resumo: data, tarifas, amortizacao: tabela.rows }, name);
   };
 
-  const inputClass = "w-full px-3 py-2.5 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring";
-  const autoClass = "w-full px-3 py-2.5 rounded-lg border border-warning/30 bg-warning/5 text-foreground text-sm font-medium";
+  const tabConfig = [
+    { value: "resumo", label: "RESUMO", color: "bg-emerald-500", enabled: true },
+    { value: "projecao", label: "PROJEÇÃO SALDO DEV.", color: "bg-orange-500", enabled: true },
+    { value: "prestacao", label: "CALC PRESTAÇÃO DEVIDA", color: "bg-orange-500", enabled: true },
+    { value: "reneg-proj", label: "PROJ. RENEG. 1", color: "bg-lime-500", enabled: data.houveRenegociacao },
+    { value: "reneg-prest", label: "CALC PREST. RENEG. 1", color: "bg-lime-500", enabled: data.houveRenegociacao },
+  ];
 
   return (
-    <div className="space-y-6">
-      {/* Dados do contrato */}
-      <div className="bg-card rounded-xl border border-border p-5 space-y-4">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-warning">📋</span>
-          <h3 className="font-heading font-semibold text-foreground">Dados do Contrato</h3>
-        </div>
-        <p className="text-xs text-muted-foreground">🔒 Campos com fundo destacado são calculados automaticamente.</p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <div><label className="text-xs font-medium text-foreground block mb-1">Cliente *</label>
-            <input value={form.cliente} onChange={(e) => setForm({ ...form, cliente: e.target.value })} className={inputClass} /></div>
-          <div><label className="text-xs font-medium text-foreground block mb-1">Banco *</label>
-            <input value={form.banco} onChange={(e) => setForm({ ...form, banco: e.target.value })} className={inputClass} /></div>
-          <div><label className="text-xs font-medium text-foreground block mb-1">Contrato Nº</label>
-            <input value={form.contratoN} onChange={(e) => setForm({ ...form, contratoN: e.target.value })} className={inputClass} /></div>
-          <div><label className="text-xs font-medium text-foreground block mb-1">Data Contratação</label>
-            <input type="date" value={form.dataContratacao} onChange={(e) => setForm({ ...form, dataContratacao: e.target.value })} className={inputClass} /></div>
-          <div><label className="text-xs font-medium text-foreground block mb-1">Primeira Parcela</label>
-            <input type="date" value={form.primeiraParcela} onChange={(e) => setForm({ ...form, primeiraParcela: e.target.value })} className={inputClass} /></div>
-          <div><label className="text-xs font-medium text-foreground block mb-1">Período de Carência (dias)</label>
-            <input value={form.carencia} onChange={(e) => setForm({ ...form, carencia: e.target.value })} className={autoClass} /></div>
-          <div><label className="text-xs font-medium text-foreground block mb-1">Taxa do contrato (a.m. %) *</label>
-            <input value={form.taxaMensal} onChange={(e) => setForm({ ...form, taxaMensal: e.target.value })} className={inputClass} /></div>
-          <div><label className="text-xs font-medium text-foreground block mb-1">Taxa do contrato (a.a. %)</label>
-            <input readOnly value={taxaA ? taxaA.toFixed(4) : ""} className={autoClass} /></div>
-          <div><label className="text-xs font-medium text-foreground block mb-1">Prestação (R$) *</label>
-            <input value={form.parcela} onChange={(e) => setForm({ ...form, parcela: e.target.value })} className={inputClass} /></div>
-          <div><label className="text-xs font-medium text-foreground block mb-1">Valor Financiado (R$) *</label>
-            <input value={form.valorFinanciado} onChange={(e) => setForm({ ...form, valorFinanciado: e.target.value })} className={inputClass} /></div>
-          <div><label className="text-xs font-medium text-foreground block mb-1">Prazo (meses) *</label>
-            <input value={form.prazoMeses} onChange={(e) => setForm({ ...form, prazoMeses: e.target.value })} className={inputClass} /></div>
-          <div><label className="text-xs font-medium text-foreground block mb-1">Parcelas Pagas *</label>
-            <input type="number" min="0" value={form.parcelasPagas} onChange={(e) => setForm({ ...form, parcelasPagas: e.target.value })} className={inputClass} /></div>
-        </div>
-      </div>
-
-      {/* Tarifas */}
-      <div className="bg-card rounded-xl border border-border p-5 space-y-3">
-        <div className="flex items-center gap-2">
-          <DollarSign className="w-4 h-4 text-destructive" />
-          <h3 className="font-heading font-semibold text-foreground">Taxas e Tarifas Abusivas/Irregulares</h3>
+    <div className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="h-auto bg-transparent gap-1 flex-wrap justify-start p-0">
+            {tabConfig.map((tab, i) => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                disabled={!tab.enabled}
+                className={`
+                  text-[10px] sm:text-xs font-bold px-2.5 sm:px-4 py-2 rounded-t-lg rounded-b-none border border-b-0
+                  data-[state=active]:text-white data-[state=active]:shadow-none
+                  disabled:opacity-40 disabled:cursor-not-allowed
+                  transition-all
+                  ${activeTab === tab.value
+                    ? `${tab.color} text-white border-border`
+                    : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+                  }
+                `}
+              >
+                <span className="mr-1 font-mono text-[9px] opacity-70">{i + 1}</span>
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
         </div>
 
-        {tarifas.map((t: any, i: number) => (
-          <div key={i} className="flex items-center gap-2 bg-destructive/5 border border-destructive/10 rounded-lg px-3 py-2">
-            <span className="flex-1 text-sm text-foreground">{t.descricao}</span>
-            <span className="text-sm font-mono font-medium text-foreground">R$ {formatBRL(parseFloat(t.valor))}</span>
-            <button onClick={() => removeTarifa(i)} className="p-1.5 rounded hover:bg-destructive/10"><Trash2 className="w-4 h-4 text-destructive" /></button>
-          </div>
-        ))}
-
-        <div className="flex flex-col sm:flex-row gap-2">
-          <input placeholder="Descrição da tarifa" value={novaTarifa.descricao} onChange={(e) => setNovaTarifa({ ...novaTarifa, descricao: e.target.value })} className={inputClass + " flex-1"} />
-          <div className="relative w-full sm:w-32">
-            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
-            <input type="number" step="0.01" placeholder="Valor" value={novaTarifa.valor} onChange={(e) => setNovaTarifa({ ...novaTarifa, valor: e.target.value })} className={inputClass + " pl-8"} />
-          </div>
-          <button onClick={addTarifa} className="flex items-center gap-1 px-3 py-2 rounded-lg border border-input text-sm hover:bg-muted transition-colors whitespace-nowrap">
-            <Plus className="w-4 h-4" /> Adicionar tarifa
-          </button>
+        <div className="border border-border rounded-b-lg rounded-tr-lg p-4 sm:p-5 bg-card">
+          <TabsContent value="resumo" className="mt-0">
+            <TabResumo data={data} tarifas={tarifas} onChange={handleChange} onTarifasChange={setTarifas} />
+          </TabsContent>
+          <TabsContent value="projecao" className="mt-0">
+            <TabProjecaoSaldo data={data} tarifas={tarifas} onChange={handleChange} />
+          </TabsContent>
+          <TabsContent value="prestacao" className="mt-0">
+            <TabPrestacaoDevida data={data} tarifas={tarifas} onChange={handleChange} />
+          </TabsContent>
+          <TabsContent value="reneg-proj" className="mt-0">
+            <TabRenegProjecao data={data} tarifas={tarifas} onChange={handleChange} saldoCorretoTab3={saldoCorretoTab3} />
+          </TabsContent>
+          <TabsContent value="reneg-prest" className="mt-0">
+            <TabRenegPrestacao data={data} tarifas={tarifas} onChange={handleChange} saldoCorretoTab3={saldoCorretoTab3} />
+          </TabsContent>
         </div>
-
-        {totalTarifas > 0 && (
-          <div className="bg-warning/10 border border-warning/20 rounded-lg px-4 py-2 flex items-center justify-between">
-            <span className="text-sm text-foreground">Total das tarifas</span>
-            <span className="text-sm font-bold font-mono text-destructive">R$ {formatBRL(totalTarifas)}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Comparativos */}
-      {taxaM > 0 && (
-        <div className="bg-card rounded-xl border border-border p-5 space-y-3">
-          <div className="flex items-center gap-2">
-            <TrendingUpIcon className="w-4 h-4 text-info-purple" />
-            <h3 className="font-heading font-semibold text-foreground">Comparativos</h3>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <StatCard label="Taxa pactuada" value={`${parseFloat(form.taxaMensal).toFixed(4)}% a.m.`} color="bg-info-purple/10 text-info-purple border-info-purple/20" />
-            <StatCard label="Média BACEN" value={mediaBacen ? `${mediaBacen.toFixed(4)}% a.m.` : "—"} color="bg-info-blue/10 text-info-blue border-info-blue/20" />
-            <StatCard label="Variação" value={variacao ? `${variacao.toFixed(2)}%` : "—"} color={variacao > 10 ? "bg-destructive/10 text-destructive border-destructive/20" : "bg-success/10 text-success border-success/20"} />
-            <StatCard label="Taxa anual" value={`${taxaA.toFixed(4)}% a.a.`} color="bg-primary/10 text-primary border-primary/20" />
-            <StatCard label="Taxa diária (360d)" value={`${taxaD.toFixed(6)}%`} color="bg-warning/10 text-warning border-warning/20" />
-            <StatCard label="Carência" value={`${form.carencia} dias`} color="bg-info-teal/10 text-info-teal border-info-teal/20" />
-          </div>
-        </div>
-      )}
+      </Tabs>
 
       {/* Actions */}
       <div className="flex flex-wrap gap-2 items-center justify-between">
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => handleExport("pdf")} className="px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90">📄 PDF</button>
-          <button onClick={() => handleExport("csv")} className="px-3 py-2 rounded-lg border border-input text-xs font-medium hover:bg-muted">📊 CSV</button>
-          <button onClick={() => handleExport("excel")} className="px-3 py-2 rounded-lg border border-input text-xs font-medium hover:bg-muted">📗 Excel</button>
-          <button onClick={() => handleExport("json")} className="px-3 py-2 rounded-lg border border-input text-xs font-medium hover:bg-muted">🔧 JSON</button>
+          <button onClick={handleExportPDF} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90">
+            <FileDown className="w-3.5 h-3.5" /> PDF
+          </button>
+          <button onClick={() => handleExportData("excel")} className="px-3 py-2 rounded-lg border border-input text-xs font-medium hover:bg-muted">📗 Excel</button>
+          <button onClick={() => handleExportData("csv")} className="px-3 py-2 rounded-lg border border-input text-xs font-medium hover:bg-muted">📊 CSV</button>
+          <button onClick={() => handleExportData("json")} className="px-3 py-2 rounded-lg border border-input text-xs font-medium hover:bg-muted">🔧 JSON</button>
+          <button onClick={handleReset} className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-destructive/30 text-destructive text-xs font-medium hover:bg-destructive/10">
+            <RotateCcw className="w-3.5 h-3.5" /> Limpar
+          </button>
         </div>
-        <button onClick={handleSave} disabled={saving} className="px-5 py-2.5 rounded-lg bg-warning text-white text-sm font-medium hover:bg-warning/90 transition-colors disabled:opacity-50">
-          {saving ? "Salvando..." : "💾 Salvar"}
+        <button onClick={handleSave} disabled={saving} className="flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-warning text-white text-sm font-medium hover:bg-warning/90 transition-colors disabled:opacity-50">
+          <Save className="w-4 h-4" /> {saving ? "Salvando..." : "Salvar"}
         </button>
       </div>
-    </div>
-  );
-}
-
-function TrendingUpIcon(props: any) { return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>; }
-
-function StatCard({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <div className={`rounded-lg border p-3 ${color}`}>
-      <p className="text-[10px] opacity-80 mb-0.5">{label}</p>
-      <p className="text-sm font-bold font-mono">{value}</p>
     </div>
   );
 }
