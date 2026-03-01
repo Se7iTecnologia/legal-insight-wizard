@@ -4,6 +4,7 @@ import { Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { ClienteForm } from "@/components/ClienteForm";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
 import { toast } from "sonner";
+import { exportPDF, exportCSV, exportExcel, exportJSON } from "@/lib/exports";
 
 interface Cliente {
   id: string;
@@ -48,28 +49,38 @@ export default function Clientes() {
     c.email?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const handleExport = (format: string) => {
+    const data = filtered.map(c => ({ Nome: c.nome, "CPF/CNPJ": c.cpf_cnpj || "", Email: c.email || "", Telefone: c.telefone || "", Cidade: c.cidade || "", UF: c.uf || "" }));
+    if (format === "pdf") exportPDF("Clientes", data, "clientes");
+    if (format === "csv") exportCSV(data, "clientes");
+    if (format === "excel") exportExcel(data, "clientes");
+    if (format === "json") exportJSON(data, "clientes");
+  };
+
   return (
     <div className="animate-fade-in">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Clientes</h1>
-          <p className="text-muted-foreground mt-1">{clientes.length} cadastrados</p>
+          <h1 className="text-2xl font-heading font-bold text-foreground">Clientes</h1>
+          <p className="text-muted-foreground mt-1 text-sm">{clientes.length} cadastrados</p>
         </div>
-        <button onClick={() => { setEditId(null); setFormOpen(true); }} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
-          <Plus className="w-4 h-4" />
-          <span className="hidden sm:inline">Novo Cliente</span>
-        </button>
+        <div className="flex gap-2">
+          <div className="flex gap-1">
+            <button onClick={() => handleExport("pdf")} className="px-2 py-1.5 rounded border border-input text-xs hover:bg-muted" title="PDF">📄</button>
+            <button onClick={() => handleExport("excel")} className="px-2 py-1.5 rounded border border-input text-xs hover:bg-muted" title="Excel">📗</button>
+            <button onClick={() => handleExport("csv")} className="px-2 py-1.5 rounded border border-input text-xs hover:bg-muted" title="CSV">📊</button>
+          </div>
+          <button onClick={() => { setEditId(null); setFormOpen(true); }} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">Novo Cliente</span>
+          </button>
+        </div>
       </div>
 
       <div className="relative mb-6">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <input
-          type="text"
-          placeholder="Buscar por nome, CPF ou email..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        />
+        <input type="text" placeholder="Buscar por nome, CPF ou email..." value={search} onChange={(e) => setSearch(e.target.value)}
+          className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
       </div>
 
       {/* Mobile cards */}
@@ -84,8 +95,8 @@ export default function Clientes() {
                 {c.telefone && <p className="text-xs text-muted-foreground">{c.telefone}</p>}
               </div>
               <div className="flex gap-1">
-                <button onClick={() => { setEditId(c.id); setFormOpen(true); }} className="p-1.5 rounded-md hover:bg-muted transition-colors"><Pencil className="w-3.5 h-3.5 text-muted-foreground" /></button>
-                <button onClick={() => setDeleteId(c.id)} className="p-1.5 rounded-md hover:bg-destructive/10 transition-colors"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
+                <button onClick={() => { setEditId(c.id); setFormOpen(true); }} className="p-1.5 rounded-md hover:bg-muted"><Pencil className="w-3.5 h-3.5 text-muted-foreground" /></button>
+                <button onClick={() => setDeleteId(c.id)} className="p-1.5 rounded-md hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
               </div>
             </div>
           </div>
@@ -120,8 +131,8 @@ export default function Clientes() {
                   <td className="px-4 py-3 text-muted-foreground">{c.cidade && c.uf ? `${c.cidade}/${c.uf}` : "—"}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
-                      <button onClick={() => { setEditId(c.id); setFormOpen(true); }} className="p-1.5 rounded-md hover:bg-muted transition-colors"><Pencil className="w-3.5 h-3.5 text-muted-foreground" /></button>
-                      <button onClick={() => setDeleteId(c.id)} className="p-1.5 rounded-md hover:bg-destructive/10 transition-colors"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
+                      <button onClick={() => { setEditId(c.id); setFormOpen(true); }} className="p-1.5 rounded-md hover:bg-muted"><Pencil className="w-3.5 h-3.5 text-muted-foreground" /></button>
+                      <button onClick={() => setDeleteId(c.id)} className="p-1.5 rounded-md hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5 text-destructive" /></button>
                     </div>
                   </td>
                 </tr>
