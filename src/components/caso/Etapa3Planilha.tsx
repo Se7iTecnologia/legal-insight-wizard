@@ -1,14 +1,14 @@
 import { useState, useMemo, useCallback } from "react";
 import { Save, FileDown, RotateCcw } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { PlanilhaData, Tarifa, defaultPlanilhaData, defaultTarifas, safeFloat, safeInt, totalTarifas, calcCarenciaDias, gerarTabelaAmortizacao, fmtMoney } from "./planilha/planilhaCalcs.tsx";
+import { PlanilhaData, Tarifa, defaultPlanilhaData, defaultTarifas, safeFloat, safeInt, totalTarifas, calcCarenciaDias, calcFatorNP, calcTaxaAnual, calcTaxaReal, gerarTabelaAmortizacao, fmtMoney, formatDate } from "./planilha/planilhaCalcs.tsx";
 import { TabResumo } from "./planilha/TabResumo";
 import { TabProjecaoSaldo } from "./planilha/TabProjecaoSaldo";
 import { TabPrestacaoDevida } from "./planilha/TabPrestacaoDevida";
 import { TabRenegProjecao } from "./planilha/TabRenegProjecao";
 import { TabRenegPrestacao } from "./planilha/TabRenegPrestacao";
 import { exportCSV, exportExcel, exportJSON } from "@/lib/exports";
-import { createBrandedDoc, finalizeBrandedDoc, getContentStartY, drawSummaryCards, drawSectionTitle, drawBrandedTable, drawKeyValueRows } from "@/lib/pdfBranded";
+import { createBrandedDoc, finalizeBrandedDoc, getContentStartY, drawSummaryCards, drawSectionTitle, drawBrandedTable, drawKeyValueRows, drawHighlightBox, drawDisclaimer } from "@/lib/pdfBranded";
 import { formatBRL, calcPMT } from "@/lib/calculations";
 import { toast } from "sonner";
 
@@ -22,6 +22,7 @@ export function Etapa3Planilha({ caso, onSave, saving }: Props) {
   const [data, setData] = useState<PlanilhaData>(() => {
     const p = caso.contrato?.planilha || {};
     const c = caso.contrato || {};
+    const bacen = (caso.bacen as any) || {};
     return {
       ...defaultPlanilhaData,
       cliente: caso.clientes?.nome || p.cliente || "",
@@ -34,7 +35,7 @@ export function Etapa3Planilha({ caso, onSave, saving }: Props) {
       valorFinanciado: p.valorFinanciado || c.valorFinanciado || "",
       prazo: p.prazo || c.prazoMeses || "",
       parcelasPagas: p.parcelasPagas || c.parcelasPagas || "0",
-      taxaMediaMercado: p.taxaMediaMercado || "",
+      taxaMediaMercado: p.taxaMediaMercado || bacen.mediaBacen || "",
       houveRenegociacao: p.houveRenegociacao || false,
       taxaProjecao: p.taxaProjecao || "",
       saldoRefinanciadoIdx: p.saldoRefinanciadoIdx ?? -1,
@@ -109,17 +110,13 @@ export function Etapa3Planilha({ caso, onSave, saving }: Props) {
     const prestBanco = safeFloat(data.prestacao);
     const diasCarencia = calcCarenciaDias(data.dataContratacao, data.primeiraParcela);
     const valorTotal = Math.max(0, vf - tt);
+    const taxaM = safeFloat(data.taxaMensal) / 100;
+    const parcelasPagas = safeInt(data.parcelasPagas);
 
-    if (!valorTotal || !taxaProj || !prazo) { toast.error("Preencha os dados do Resumo"); return; }
-
-    const tabela = gerarTabelaAmortizacao({
-      valorBase: valorTotal, taxa: taxaProj, prazo,
-      dataContratacao: data.dataContratacao, primeiraParcela: data.primeiraParcela,
-      diasCarencia, prestacaoFixa: prestBanco,
-    });
+    if (!valorTotal || !prazo) { toast.error("Preencha os dados do Resumo"); return; }
 
     const opts = {
-      title: "Planilha Revisional",
+      title: "Relatório Planilha Revisional",
       subtitle: `Sistema Price — ${caso.codigo}`,
       clienteNome: data.cliente,
       banco: data.banco,
@@ -128,25 +125,230 @@ export function Etapa3Planilha({ caso, onSave, saving }: Props) {
     };
     const doc = createBrandedDoc(opts);
     let y = getContentStartY(opts);
+    const ph = doc.internal.pageSize.getHeight();
+
+    const checkPage = (needed: number) => {
+      if (y + needed > ph - 30) { doc.addPage(); y = 20; }
+    };
+
+    // ═══════════════════════════════════════
+    // SEÇÃO 1: RESUMO
+    // ═══════════════════════════════════════
+    y = drawSectionTitle(doc, "1. RESUMO DO CONTRATO", y, 1);
 
     y = drawSummaryCards(doc, [
       { label: "Valor Financiado", value: `R$ ${formatBRL(vf)}`, color: "navy" },
-      { label: "Valor Correto", value: `R$ ${formatBRL(valorTotal)}`, color: "blue" },
-      { label: "Taxa Projeção", value: `${(taxaProj * 100).toFixed(4)}% a.m.`, color: "gold" },
-      { label: "Prazo", value: `${prazo} meses`, color: "green" },
+      { label: "Total Tarifas", value: `R$ ${formatBRL(tt)}`, color: "red" },
+      { label: "Valor Correto", value: `R$ ${formatBRL(valorTotal)}`, color: "green" },
+      { label: "Prazo", value: `${prazo} meses`, color: "blue" },
     ], y);
 
-    y = drawSectionTitle(doc, "Tabela de Amortização — Projeção", y);
-    const head = ["Prazo", "Data", "Amortização", "Juros", "Prestação", "Saldo Devedor"];
-    const body = tabela.rows.map(r => [
-      r.label || String(r.prazo),
-      r.data,
-      r.label === "CONTRATAÇÃO" ? "—" : fmtMoney(r.amortizacao),
-      r.label === "CONTRATAÇÃO" ? "—" : fmtMoney(r.juros),
-      r.label === "CONTRATAÇÃO" ? "—" : fmtMoney(r.prestacao),
-      fmtMoney(r.saldo),
-    ]);
-    drawBrandedTable(doc, head, body, y);
+    // Dados do contrato
+    y = drawKeyValueRows(doc, [
+      { label: "Cliente", value: data.cliente || "—" },
+      { label: "Banco", value: data.banco || "—" },
+      { label: "Contrato Nº", value: data.contratoN || "—" },
+      { label: "Data Contratação", value: formatDate(data.dataContratacao) },
+      { label: "Primeira Parcela", value: formatDate(data.primeiraParcela) },
+      { label: "Carência (dias)", value: String(diasCarencia) },
+      { label: "Taxa Pactuada (a.m.)", value: `${data.taxaMensal}%` },
+      { label: "Taxa Pactuada (a.a.)", value: taxaM ? `${(calcTaxaAnual(taxaM)).toFixed(4)}%` : "—" },
+      { label: "Prestação", value: `R$ ${formatBRL(prestBanco)}` },
+      { label: "Parcelas Pagas", value: data.parcelasPagas },
+    ], y);
+
+    // Tarifas table
+    if (tarifas.some(t => safeFloat(t.valor) > 0)) {
+      checkPage(40);
+      y = drawSectionTitle(doc, "Taxas e Tarifas Abusivas/Irregulares", y);
+      const tHead = ["Descrição", "Valor (R$)"];
+      const tBody = tarifas.filter(t => t.descricao || safeFloat(t.valor) > 0).map(t => [t.descricao, `R$ ${formatBRL(safeFloat(t.valor))}`]);
+      tBody.push(["TOTAL", `R$ ${formatBRL(tt)}`]);
+      y = drawBrandedTable(doc, tHead, tBody, y);
+    }
+
+    // Comparativo de taxas
+    const taxaReal = calcTaxaReal(vf, prestBanco, prazo);
+    const taxaMedia = safeFloat(data.taxaMediaMercado);
+    const variacao = taxaMedia ? ((taxaReal / taxaMedia) - 1) * 100 : 0;
+    if (taxaM > 0) {
+      checkPage(30);
+      y = drawSectionTitle(doc, "Comparativo de Taxas", y);
+      y = drawKeyValueRows(doc, [
+        { label: "Taxa Pactuada", value: `${data.taxaMensal}%`, color: "navy" },
+        { label: "Taxa Real Aplicada (RATE)", value: `${taxaReal.toFixed(4)}%`, color: variacao > 20 ? "red" : "navy" },
+        { label: "Taxa Média Mercado (BACEN)", value: taxaMedia ? `${taxaMedia}%` : "Não informada" },
+        { label: "Variação", value: variacao ? `${variacao.toFixed(2)}%` : "—", bold: true, color: variacao > 20 ? "red" : "green" },
+      ], y);
+    }
+
+    // ═══════════════════════════════════════
+    // SEÇÃO 2: PROJEÇÃO DO SALDO DEVEDOR
+    // ═══════════════════════════════════════
+    if (taxaProj > 0) {
+      doc.addPage();
+      y = 20;
+      y = drawSectionTitle(doc, "2. PROJEÇÃO DO SALDO DEVEDOR", y, 2);
+
+      const fatorNP = calcFatorNP(taxaProj, diasCarencia);
+      const jurosCarencia = valorTotal * fatorNP;
+
+      y = drawSummaryCards(doc, [
+        { label: "Valor Total Financiado", value: `R$ ${formatBRL(valorTotal)}`, color: "blue" },
+        { label: "Taxa Projeção", value: `${(taxaProj * 100).toFixed(4)}% a.m.`, color: "gold" },
+        { label: "Fator NP", value: fatorNP.toFixed(8), color: "navy" },
+        { label: "Juros Carência", value: `R$ ${formatBRL(jurosCarencia)}`, color: "navy" },
+      ], y);
+
+      const tabela = gerarTabelaAmortizacao({
+        valorBase: valorTotal, taxa: taxaProj, prazo,
+        dataContratacao: data.dataContratacao, primeiraParcela: data.primeiraParcela,
+        diasCarencia, prestacaoFixa: prestBanco,
+      });
+
+      y = drawSectionTitle(doc, "Tabela de Amortização — Projeção", y);
+      const head = ["Prazo", "Data", "Amortização", "Juros", "Prestação", "Saldo Devedor"];
+      const body = tabela.rows.map(r => [
+        r.label || String(r.prazo),
+        r.data,
+        r.label === "CONTRATAÇÃO" ? "—" : fmtMoney(r.amortizacao),
+        r.label === "CONTRATAÇÃO" ? "—" : fmtMoney(r.juros),
+        r.label === "CONTRATAÇÃO" ? "—" : fmtMoney(r.prestacao),
+        fmtMoney(r.saldo),
+      ]);
+      y = drawBrandedTable(doc, head, body, y);
+
+      // ═══════════════════════════════════════
+      // SEÇÃO 3: CÁLCULO PRESTAÇÃO DEVIDA
+      // ═══════════════════════════════════════
+      doc.addPage();
+      y = 20;
+      y = drawSectionTitle(doc, "3. CÁLCULO PRESTAÇÃO DEVIDA", y, 3);
+
+      const selectedIdx = data.saldoRefinanciadoIdx >= 0 ? data.saldoRefinanciadoIdx : parcelasPagas + (diasCarencia > 0 ? 1 : 0);
+      const saldoRef = selectedIdx >= 0 && selectedIdx < tabela.rows.length ? tabela.rows[selectedIdx].saldo : 0;
+      const prazoRestante = prazo - parcelasPagas;
+      const novaPrest = saldoRef && prazoRestante > 0 ? calcPMT(saldoRef, taxaProj, prazoRestante) : 0;
+
+      y = drawSummaryCards(doc, [
+        { label: "Saldo Refinanciado", value: `R$ ${formatBRL(saldoRef)}`, color: "gold" },
+        { label: "Prazo Restante", value: `${prazoRestante} meses`, color: "blue" },
+        { label: "Nova Prestação", value: `R$ ${formatBRL(novaPrest)}`, color: "green" },
+        { label: "Diferença/Parcela", value: `R$ ${formatBRL(prestBanco - novaPrest)}`, color: "red" },
+      ], y);
+
+      y = drawHighlightBox(doc, [
+        { label: "Prestação cobrada pelo banco", value: `R$ ${formatBRL(prestBanco)}` },
+        { label: "Prestação correta (calculada)", value: `R$ ${formatBRL(novaPrest)}`, big: true },
+        { label: "Diferença por parcela", value: `R$ ${formatBRL(prestBanco - novaPrest)}` },
+        { label: `Diferença total (${prazoRestante} parcelas)`, value: `R$ ${formatBRL((prestBanco - novaPrest) * prazoRestante)}`, big: true },
+      ], y, "green");
+
+      // Table with substitution
+      if (novaPrest > 0) {
+        const tabelaPrest = gerarTabelaAmortizacao({
+          valorBase: valorTotal, taxa: taxaProj, prazo,
+          dataContratacao: data.dataContratacao, primeiraParcela: data.primeiraParcela,
+          diasCarencia, prestacaoFixa: prestBanco,
+          substituirApos: parcelasPagas, novaPrestacao: novaPrest,
+        });
+        checkPage(30);
+        y = drawSectionTitle(doc, "Tabela de Amortização — Prestação Devida", y);
+        const body3 = tabelaPrest.rows.map(r => [
+          r.label || String(r.prazo), r.data,
+          r.label === "CONTRATAÇÃO" ? "—" : fmtMoney(r.amortizacao),
+          r.label === "CONTRATAÇÃO" ? "—" : fmtMoney(r.juros),
+          r.label === "CONTRATAÇÃO" ? "—" : fmtMoney(r.prestacao),
+          fmtMoney(r.saldo),
+        ]);
+        y = drawBrandedTable(doc, head, body3, y);
+      }
+
+      // ═══════════════════════════════════════
+      // SEÇÕES 4 & 5: RENEGOCIAÇÃO (se ativo)
+      // ═══════════════════════════════════════
+      if (data.houveRenegociacao) {
+        const r = data.reneg;
+        const rTaxa = safeFloat(r.taxaAplicada) / 100;
+        const rPrazo = safeInt(r.prazo);
+        const rExclusao = safeFloat(r.exclusaoTarifas);
+        const rSaldoBase = saldoCorretoTab3 > 0 ? saldoCorretoTab3 - rExclusao : 0;
+        const rDiasCarencia = calcCarenciaDias(r.dataContrato, r.primeiraParcela);
+        const rFatorNP = calcFatorNP(rTaxa, rDiasCarencia);
+        const rJurosCarencia = rSaldoBase * rFatorNP;
+        const rPrestCobrada = safeFloat(r.prestacaoCobrada);
+        const rNovaPrest = rSaldoBase && rTaxa && rPrazo ? calcPMT(rSaldoBase + rJurosCarencia, rTaxa, rPrazo) : 0;
+
+        if (rSaldoBase > 0 && rTaxa > 0 && rPrazo > 0) {
+          doc.addPage();
+          y = 20;
+          y = drawSectionTitle(doc, "4. PROJEÇÃO SALDO DEV. — RENEGOCIAÇÃO", y, 4);
+
+          y = drawSummaryCards(doc, [
+            { label: "Saldo Correto", value: `R$ ${formatBRL(rSaldoBase)}`, color: "blue" },
+            { label: "Taxa Reneg.", value: `${r.taxaAplicada}% a.m.`, color: "gold" },
+            { label: "Nova Prestação", value: `R$ ${formatBRL(rNovaPrest)}`, color: "green" },
+            { label: "Novo Total", value: `R$ ${formatBRL(rNovaPrest * rPrazo)}`, color: "navy" },
+          ], y);
+
+          if (rPrestCobrada > 0 && rNovaPrest > 0) {
+            y = drawHighlightBox(doc, [
+              { label: "Prestação cobrada (Reneg.)", value: `R$ ${formatBRL(rPrestCobrada)}` },
+              { label: "Prestação correta", value: `R$ ${formatBRL(rNovaPrest)}`, big: true },
+              { label: "Diferença por parcela", value: `R$ ${formatBRL(rPrestCobrada - rNovaPrest)}` },
+              { label: `Total cobrado a mais (${rPrazo}x)`, value: `R$ ${formatBRL((rPrestCobrada - rNovaPrest) * rPrazo)}`, big: true },
+            ], y, "green");
+          }
+
+          const tabelaReneg = gerarTabelaAmortizacao({
+            valorBase: rSaldoBase, taxa: rTaxa, prazo: rPrazo,
+            dataContratacao: r.dataContrato, primeiraParcela: r.primeiraParcela,
+            diasCarencia: rDiasCarencia, prestacaoFixa: rPrestCobrada || rNovaPrest,
+          });
+          checkPage(30);
+          y = drawSectionTitle(doc, "Tabela de Amortização — Renegociação", y);
+          const bodyR = tabelaReneg.rows.map(row => [
+            row.label || String(row.prazo), row.data,
+            row.label === "CONTRATAÇÃO" ? "—" : fmtMoney(row.amortizacao),
+            row.label === "CONTRATAÇÃO" ? "—" : fmtMoney(row.juros),
+            row.label === "CONTRATAÇÃO" ? "—" : fmtMoney(row.prestacao),
+            fmtMoney(row.saldo),
+          ]);
+          y = drawBrandedTable(doc, head, bodyR, y);
+
+          // Seção 5: Cálculo Prestação Renegociação
+          const rParcelasPagas = safeInt(r.parcelasPagas);
+          if (rParcelasPagas > 0) {
+            const rSelectedIdx = r.saldoIdx >= 0 ? r.saldoIdx : rParcelasPagas + (rDiasCarencia > 0 ? 1 : 0);
+            const rSaldoAtual = rSelectedIdx >= 0 && rSelectedIdx < tabelaReneg.rows.length ? tabelaReneg.rows[rSelectedIdx].saldo : 0;
+            const rPrazoRest = rPrazo - rParcelasPagas;
+            const rPrestCorreta = rSaldoAtual && rTaxa && rPrazoRest > 0 ? calcPMT(rSaldoAtual, rTaxa, rPrazoRest) : 0;
+
+            if (rPrestCorreta > 0) {
+              doc.addPage();
+              y = 20;
+              y = drawSectionTitle(doc, "5. CÁLC. PRESTAÇÃO — RENEGOCIAÇÃO", y, 5);
+
+              y = drawSummaryCards(doc, [
+                { label: "Saldo Devedor", value: `R$ ${formatBRL(rSaldoAtual)}`, color: "gold" },
+                { label: "Prazo Restante", value: `${rPrazoRest} meses`, color: "blue" },
+                { label: "Prestação Correta", value: `R$ ${formatBRL(rPrestCorreta)}`, color: "green" },
+              ], y);
+
+              y = drawHighlightBox(doc, [
+                { label: "Prestação cobrada", value: `R$ ${formatBRL(rPrestCobrada)}` },
+                { label: "Prestação correta", value: `R$ ${formatBRL(rPrestCorreta)}`, big: true },
+                { label: `Diferença total (${rPrazoRest}x)`, value: `R$ ${formatBRL((rPrestCobrada - rPrestCorreta) * rPrazoRest)}`, big: true },
+              ], y, "green");
+            }
+          }
+        }
+      }
+    }
+
+    // Disclaimer
+    checkPage(30);
+    y = drawDisclaimer(doc, y);
 
     finalizeBrandedDoc(doc, `Planilha_Revisional_${(data.cliente || "caso").replace(/\s+/g, "_")}`);
   };
@@ -203,12 +405,11 @@ export function Etapa3Planilha({ caso, onSave, saving }: Props) {
                 disabled={!tab.enabled}
                 className={`
                   text-[10px] sm:text-xs font-bold px-2.5 sm:px-4 py-2 rounded-t-lg rounded-b-none border border-b-0
-                  data-[state=active]:text-white data-[state=active]:shadow-none
                   disabled:opacity-40 disabled:cursor-not-allowed
                   transition-all
                   ${activeTab === tab.value
-                    ? `${tab.color} text-white border-border`
-                    : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+                    ? `${tab.color} text-foreground border-border shadow-sm`
+                    : "bg-muted/50 text-foreground border-border hover:bg-muted"
                   }
                 `}
               >
