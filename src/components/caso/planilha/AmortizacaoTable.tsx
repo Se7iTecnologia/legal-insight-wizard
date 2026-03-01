@@ -1,4 +1,4 @@
-import { AmortRow, fmtMoney } from "./planilhaCalcs";
+import { AmortRow, fmtMoney } from "./planilhaCalcs.tsx";
 
 interface Props {
   rows: AmortRow[];

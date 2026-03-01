@@ -1,5 +1,5 @@
 import { Plus, Trash2, AlertTriangle } from "lucide-react";
-import { PlanilhaData, Tarifa, cls, Field, safeFloat, safeInt, totalTarifas, calcCarenciaDias, calcTaxaAnual, calcTaxaReal, fmtPct } from "./planilhaCalcs";
+import { PlanilhaData, Tarifa, cls, Field, safeFloat, safeInt, totalTarifas, calcCarenciaDias, calcTaxaAnual, calcTaxaReal, fmtPct } from "./planilhaCalcs.tsx";
 
 interface Props {
   data: PlanilhaData;

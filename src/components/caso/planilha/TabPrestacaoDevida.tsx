@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { PlanilhaData, Tarifa, cls, Field, safeFloat, safeInt, totalTarifas, calcCarenciaDias, calcFatorNP, gerarTabelaAmortizacao, fmtMoney, formatDate } from "./planilhaCalcs";
+import { PlanilhaData, Tarifa, cls, Field, safeFloat, safeInt, totalTarifas, calcCarenciaDias, calcFatorNP, gerarTabelaAmortizacao, fmtMoney, formatDate } from "./planilhaCalcs.tsx";
 import { AmortizacaoTable } from "./AmortizacaoTable";
 import { calcPMT, formatBRL } from "@/lib/calculations";
 
