@@ -36,14 +36,23 @@ export default function CasoDetalhe() {
     setSaving(true);
     const { error } = await supabase.from("casos").update({ [field]: value }).eq("id", caso.id);
     if (error) toast.error("Erro ao salvar");
-    else { toast.success("Salvo!"); setCaso({ ...caso, [field]: value }); }
+    else { setCaso((prev: any) => prev ? { ...prev, [field]: value } : prev); }
+    setSaving(false);
+  };
+
+  const saveBatch = async (updates: Record<string, any>) => {
+    if (!caso) return;
+    setSaving(true);
+    const { error } = await supabase.from("casos").update(updates).eq("id", caso.id);
+    if (error) toast.error("Erro ao salvar");
+    else { setCaso((prev: any) => prev ? { ...prev, ...updates } : prev); toast.success("Salvo!"); }
     setSaving(false);
   };
 
   const goToStep = async (step: number) => {
     if (!caso) return;
     await supabase.from("casos").update({ etapa_atual: step }).eq("id", caso.id);
-    setCaso({ ...caso, etapa_atual: step });
+    setCaso((prev: any) => prev ? { ...prev, etapa_atual: step } : prev);
   };
 
   const etapaLabels: Record<number, string> = { 1: "Calculadora Price", 2: "Consulta BACEN", 3: "Planilha Revisional", 4: "Valores a Receber", 5: "Documentos" };
@@ -61,6 +70,7 @@ export default function CasoDetalhe() {
         <div className="text-center flex-1">
           <h1 className="text-lg sm:text-xl font-heading font-bold text-foreground uppercase">{caso.clientes?.nome ?? "Sem cliente"}</h1>
           <p className="text-xs text-muted-foreground font-mono">{caso.codigo}</p>
+          <p className="text-xs text-primary font-medium mt-0.5">Etapa {caso.etapa_atual}/5 — {etapaLabels[caso.etapa_atual]}</p>
         </div>
         <button onClick={() => saveField("status", caso.status)} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-warning text-white text-sm font-medium hover:bg-warning/90 transition-colors">
           <Save className="w-4 h-4" /> Salvar
@@ -74,7 +84,7 @@ export default function CasoDetalhe() {
       <div className="bg-card rounded-xl border border-border p-4 sm:p-6 mb-6">
         {caso.etapa_atual === 1 && <Etapa1Calculadora caso={caso} onSave={saveField} saving={saving} />}
         {caso.etapa_atual === 2 && <Etapa2Bacen caso={caso} onSave={saveField} saving={saving} />}
-        {caso.etapa_atual === 3 && <Etapa3Planilha caso={caso} onSave={saveField} saving={saving} />}
+        {caso.etapa_atual === 3 && <Etapa3Planilha caso={caso} onSave={saveField} onSaveBatch={saveBatch} saving={saving} />}
         {caso.etapa_atual === 4 && <Etapa4Valores caso={caso} />}
         {caso.etapa_atual === 5 && <Etapa5Documentos caso={caso} />}
       </div>

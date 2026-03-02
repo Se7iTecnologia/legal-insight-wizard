@@ -15,10 +15,11 @@ import { toast } from "sonner";
 interface Props {
   caso: any;
   onSave: (field: string, value: any) => void;
+  onSaveBatch?: (updates: Record<string, any>) => Promise<void>;
   saving: boolean;
 }
 
-export function Etapa3Planilha({ caso, onSave, saving }: Props) {
+export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
   const [data, setData] = useState<PlanilhaData>(() => {
     const p = caso.contrato?.planilha || {};
     const c = caso.contrato || {};
@@ -69,8 +70,12 @@ export function Etapa3Planilha({ caso, onSave, saving }: Props) {
       instituicao: data.banco,
       parcelasPagas: data.parcelasPagas,
     };
-    await onSave("contrato", contratoAtualizado);
-    await onSave("tarifas", tarifas);
+    if (onSaveBatch) {
+      await onSaveBatch({ contrato: contratoAtualizado, tarifas });
+    } else {
+      await onSave("contrato", contratoAtualizado);
+      await onSave("tarifas", tarifas);
+    }
     toast.success("Planilha salva!");
   };
 
