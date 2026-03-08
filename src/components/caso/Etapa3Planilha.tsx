@@ -116,17 +116,17 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
   }, [data, tarifas]);
 
   const handleExportPDF = () => {
-    const vf = safeFloat(data.valorFinanciado);
-    const tt = totalTarifas(tarifas);
-    const taxaProj = safeFloat(data.taxaProjecao || data.taxaMediaMercado) / 100;
-    const prazo = safeInt(data.prazo);
-    const prestBanco = safeFloat(data.prestacao);
-    const diasCarencia = calcCarenciaDias(data.dataContratacao, data.primeiraParcela);
-    const valorTotal = Math.max(0, vf - tt);
-    const taxaM = safeFloat(data.taxaMensal) / 100;
-    const parcelasPagas = safeInt(data.parcelasPagas);
-
-    if (!valorTotal && !prazo) { toast.error("Preencha ao menos alguns dados"); return; }
+    try {
+      const vf = safeFloat(data.valorFinanciado);
+      const tt = totalTarifas(tarifas);
+      const taxaProj = safeFloat(data.taxaProjecao || data.taxaMediaMercado) / 100;
+      const prazo = safeInt(data.prazo);
+      const prestBanco = safeFloat(data.prestacao);
+      const diasCarencia = calcCarenciaDias(data.dataContratacao, data.primeiraParcela);
+      const valorTotal = Math.max(0, vf - tt);
+      const taxaM = safeFloat(data.taxaMensal) / 100;
+      const parcelasPagas = safeInt(data.parcelasPagas);
+      const canBuildProjecao = valorTotal > 0 && taxaProj > 0 && prazo > 0;
 
     const opts = {
       title: "Relatório Planilha Revisional",
