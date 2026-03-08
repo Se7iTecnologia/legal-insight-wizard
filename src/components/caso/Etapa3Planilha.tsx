@@ -335,7 +335,7 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
 
           // Seção 5: Cálculo Prestação Renegociação
           const rParcelasPagas = safeInt(r.parcelasPagas);
-          if (rParcelasPagas > 0) {
+          if (rParcelasPagas > 0 && pdfSections.renegPrest) {
             const rSelectedIdx = r.saldoIdx >= 0 ? r.saldoIdx : rParcelasPagas + (rDiasCarencia > 0 ? 1 : 0);
             const rSaldoAtual = rSelectedIdx >= 0 && rSelectedIdx < tabelaReneg.rows.length ? tabelaReneg.rows[rSelectedIdx].saldo : 0;
             const rPrazoRest = rPrazo - rParcelasPagas;
