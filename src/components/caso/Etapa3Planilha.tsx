@@ -368,6 +368,10 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
     y = drawDisclaimer(doc, y);
 
     finalizeBrandedDoc(doc, `Planilha_Revisional_${(data.cliente || "caso").replace(/\s+/g, "_")}`);
+    } catch (error) {
+      console.error("Erro ao exportar PDF da planilha:", error);
+      toast.error("Não foi possível exportar este PDF. Verifique os campos e tente novamente.");
+    }
   };
 
   const handleExportData = (format: string) => {
