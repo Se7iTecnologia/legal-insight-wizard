@@ -200,7 +200,7 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
     // ═══════════════════════════════════════
     // SEÇÃO 2: PROJEÇÃO DO SALDO DEVEDOR
     // ═══════════════════════════════════════
-    if (pdfSections.projecao && taxaProj > 0) {
+    if (pdfSections.projecao && canBuildProjecao) {
       doc.addPage();
       y = 20;
       y = drawSectionTitle(doc, "2. PROJEÇÃO DO SALDO DEVEDOR", y, 2);
