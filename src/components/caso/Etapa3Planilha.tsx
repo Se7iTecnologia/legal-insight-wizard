@@ -195,11 +195,12 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
         { label: "Variação", value: variacao ? `${variacao.toFixed(2)}%` : "—", bold: true, color: variacao > 20 ? "red" : "green" },
       ], y);
     }
+    } // end pdfSections.resumo
 
     // ═══════════════════════════════════════
     // SEÇÃO 2: PROJEÇÃO DO SALDO DEVEDOR
     // ═══════════════════════════════════════
-    if (taxaProj > 0) {
+    if (pdfSections.projecao && taxaProj > 0) {
       doc.addPage();
       y = 20;
       y = drawSectionTitle(doc, "2. PROJEÇÃO DO SALDO DEVEDOR", y, 2);
