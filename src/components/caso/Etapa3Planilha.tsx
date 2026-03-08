@@ -456,9 +456,38 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
         </div>
       </Tabs>
 
+      {/* PDF Section Toggles */}
+      {showPdfOptions && (
+        <div className="border border-border rounded-lg p-4 bg-muted/30 space-y-2">
+          <p className="text-xs font-bold text-foreground mb-2">Seções do PDF:</p>
+          <div className="flex flex-wrap gap-3">
+            {[
+              { key: "resumo" as const, label: "1. Resumo" },
+              { key: "projecao" as const, label: "2. Projeção Saldo" },
+              { key: "prestacao" as const, label: "3. Prestação Devida" },
+              { key: "renegProj" as const, label: "4. Reneg. Projeção" },
+              { key: "renegPrest" as const, label: "5. Reneg. Prestação" },
+            ].map(s => (
+              <label key={s.key} className="flex items-center gap-1.5 text-xs text-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={pdfSections[s.key]}
+                  onChange={e => setPdfSections(prev => ({ ...prev, [s.key]: e.target.checked }))}
+                  className="rounded border-input accent-primary w-3.5 h-3.5"
+                />
+                {s.label}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Actions */}
       <div className="flex flex-wrap gap-2 items-center justify-between">
         <div className="flex flex-wrap gap-2">
+          <button onClick={() => setShowPdfOptions(!showPdfOptions)} className="px-3 py-2 rounded-lg border border-input text-xs font-medium hover:bg-muted">
+            ⚙️ Seções PDF
+          </button>
           <button onClick={handleExportPDF} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90">
             <FileDown className="w-3.5 h-3.5" /> PDF
           </button>
