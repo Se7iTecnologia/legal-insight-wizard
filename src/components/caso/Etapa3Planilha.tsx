@@ -147,6 +147,7 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
     // ═══════════════════════════════════════
     // SEÇÃO 1: RESUMO
     // ═══════════════════════════════════════
+    if (pdfSections.resumo) {
     y = drawSectionTitle(doc, "1. RESUMO DO CONTRATO", y, 1);
 
     y = drawSummaryCards(doc, [
