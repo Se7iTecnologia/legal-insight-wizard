@@ -168,7 +168,7 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
       { label: "Taxa Pactuada (a.m.)", value: `${data.taxaMensal}%` },
       { label: "Taxa Pactuada (a.a.)", value: taxaM ? `${(calcTaxaAnual(taxaM)).toFixed(4)}%` : "—" },
       { label: "Prestação", value: `R$ ${formatBRL(prestBanco)}` },
-      { label: "Parcelas Pagas", value: data.parcelasPagas },
+      { label: "Parcelas Pagas", value: String(data.parcelasPagas || "0") },
     ], y);
 
     // Tarifas table
