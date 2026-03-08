@@ -284,7 +284,7 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
       // ═══════════════════════════════════════
       // SEÇÕES 4 & 5: RENEGOCIAÇÃO (se ativo)
       // ═══════════════════════════════════════
-      if (data.houveRenegociacao) {
+      if (data.houveRenegociacao && pdfSections.renegProj) {
         const r = data.reneg;
         const rTaxa = safeFloat(r.taxaAplicada) / 100;
         const rPrazo = safeInt(r.prazo);
