@@ -126,7 +126,7 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
     const taxaM = safeFloat(data.taxaMensal) / 100;
     const parcelasPagas = safeInt(data.parcelasPagas);
 
-    if (!valorTotal || !prazo) { toast.error("Preencha os dados do Resumo"); return; }
+    if (!valorTotal && !prazo) { toast.error("Preencha ao menos alguns dados"); return; }
 
     const opts = {
       title: "Relatório Planilha Revisional",
