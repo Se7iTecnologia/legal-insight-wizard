@@ -49,6 +49,15 @@ export default function Casos() {
 
   useEffect(() => { fetchCasos(); }, [fetchCasos]);
 
+  // Atualizar todos os casos rascunho para ativo
+  useEffect(() => {
+    const ativarTodos = async () => {
+      const { error } = await supabase.from("casos").update({ status: "ativo" }).eq("status", "rascunho");
+      if (!error) fetchCasos();
+    };
+    ativarTodos();
+  }, []);
+
   const handleDelete = async () => {
     if (!deleteId) return;
     setDeleting(true);
