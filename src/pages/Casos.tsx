@@ -49,6 +49,7 @@ export default function Casos() {
 
   useEffect(() => { fetchCasos(); }, [fetchCasos]);
 
+
   const handleDelete = async () => {
     if (!deleteId) return;
     setDeleting(true);
