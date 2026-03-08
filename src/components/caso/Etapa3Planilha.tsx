@@ -116,17 +116,17 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
   }, [data, tarifas]);
 
   const handleExportPDF = () => {
-    const vf = safeFloat(data.valorFinanciado);
-    const tt = totalTarifas(tarifas);
-    const taxaProj = safeFloat(data.taxaProjecao || data.taxaMediaMercado) / 100;
-    const prazo = safeInt(data.prazo);
-    const prestBanco = safeFloat(data.prestacao);
-    const diasCarencia = calcCarenciaDias(data.dataContratacao, data.primeiraParcela);
-    const valorTotal = Math.max(0, vf - tt);
-    const taxaM = safeFloat(data.taxaMensal) / 100;
-    const parcelasPagas = safeInt(data.parcelasPagas);
-
-    if (!valorTotal && !prazo) { toast.error("Preencha ao menos alguns dados"); return; }
+    try {
+      const vf = safeFloat(data.valorFinanciado);
+      const tt = totalTarifas(tarifas);
+      const taxaProj = safeFloat(data.taxaProjecao || data.taxaMediaMercado) / 100;
+      const prazo = safeInt(data.prazo);
+      const prestBanco = safeFloat(data.prestacao);
+      const diasCarencia = calcCarenciaDias(data.dataContratacao, data.primeiraParcela);
+      const valorTotal = Math.max(0, vf - tt);
+      const taxaM = safeFloat(data.taxaMensal) / 100;
+      const parcelasPagas = safeInt(data.parcelasPagas);
+      const canBuildProjecao = valorTotal > 0 && taxaProj > 0 && prazo > 0;
 
     const opts = {
       title: "Relatório Planilha Revisional",
@@ -200,7 +200,7 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
     // ═══════════════════════════════════════
     // SEÇÃO 2: PROJEÇÃO DO SALDO DEVEDOR
     // ═══════════════════════════════════════
-    if (pdfSections.projecao && taxaProj > 0) {
+    if (pdfSections.projecao && canBuildProjecao) {
       doc.addPage();
       y = 20;
       y = drawSectionTitle(doc, "2. PROJEÇÃO DO SALDO DEVEDOR", y, 2);
@@ -368,6 +368,10 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
     y = drawDisclaimer(doc, y);
 
     finalizeBrandedDoc(doc, `Planilha_Revisional_${(data.cliente || "caso").replace(/\s+/g, "_")}`);
+    } catch (error) {
+      console.error("Erro ao exportar PDF da planilha:", error);
+      toast.error("Não foi possível exportar este PDF. Verifique os campos e tente novamente.");
+    }
   };
 
   const handleExportData = (format: string) => {
@@ -379,7 +383,7 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
     const diasCarencia = calcCarenciaDias(data.dataContratacao, data.primeiraParcela);
     const valorTotal = Math.max(0, vf - tt);
 
-    if (!valorTotal && !prazo) { toast.error("Preencha os dados"); return; }
+    if (!valorTotal || !taxaProj || !prazo) { toast.error("Para CSV/Excel/JSON, preencha valor, taxa e prazo"); return; }
 
     const tabela = gerarTabelaAmortizacao({
       valorBase: valorTotal, taxa: taxaProj, prazo,
