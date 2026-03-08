@@ -51,6 +51,14 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
   });
 
   const [activeTab, setActiveTab] = useState("resumo");
+  const [pdfSections, setPdfSections] = useState({
+    resumo: true,
+    projecao: true,
+    prestacao: true,
+    renegProj: true,
+    renegPrest: true,
+  });
+  const [showPdfOptions, setShowPdfOptions] = useState(false);
 
   const handleChange = useCallback((partial: Partial<PlanilhaData>) => {
     setData(prev => ({ ...prev, ...partial }));
