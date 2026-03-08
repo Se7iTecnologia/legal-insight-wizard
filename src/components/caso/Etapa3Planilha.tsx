@@ -51,6 +51,14 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
   });
 
   const [activeTab, setActiveTab] = useState("resumo");
+  const [pdfSections, setPdfSections] = useState({
+    resumo: true,
+    projecao: true,
+    prestacao: true,
+    renegProj: true,
+    renegPrest: true,
+  });
+  const [showPdfOptions, setShowPdfOptions] = useState(false);
 
   const handleChange = useCallback((partial: Partial<PlanilhaData>) => {
     setData(prev => ({ ...prev, ...partial }));
@@ -118,7 +126,7 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
     const taxaM = safeFloat(data.taxaMensal) / 100;
     const parcelasPagas = safeInt(data.parcelasPagas);
 
-    if (!valorTotal || !prazo) { toast.error("Preencha os dados do Resumo"); return; }
+    if (!valorTotal && !prazo) { toast.error("Preencha ao menos alguns dados"); return; }
 
     const opts = {
       title: "Relatório Planilha Revisional",
@@ -139,6 +147,7 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
     // ═══════════════════════════════════════
     // SEÇÃO 1: RESUMO
     // ═══════════════════════════════════════
+    if (pdfSections.resumo) {
     y = drawSectionTitle(doc, "1. RESUMO DO CONTRATO", y, 1);
 
     y = drawSummaryCards(doc, [
@@ -186,11 +195,12 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
         { label: "Variação", value: variacao ? `${variacao.toFixed(2)}%` : "—", bold: true, color: variacao > 20 ? "red" : "green" },
       ], y);
     }
+    } // end pdfSections.resumo
 
     // ═══════════════════════════════════════
     // SEÇÃO 2: PROJEÇÃO DO SALDO DEVEDOR
     // ═══════════════════════════════════════
-    if (taxaProj > 0) {
+    if (pdfSections.projecao && taxaProj > 0) {
       doc.addPage();
       y = 20;
       y = drawSectionTitle(doc, "2. PROJEÇÃO DO SALDO DEVEDOR", y, 2);
@@ -226,6 +236,7 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
       // ═══════════════════════════════════════
       // SEÇÃO 3: CÁLCULO PRESTAÇÃO DEVIDA
       // ═══════════════════════════════════════
+      if (pdfSections.prestacao) {
       doc.addPage();
       y = 20;
       y = drawSectionTitle(doc, "3. CÁLCULO PRESTAÇÃO DEVIDA", y, 3);
@@ -268,11 +279,12 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
         ]);
         y = drawBrandedTable(doc, head, body3, y);
       }
+      } // end pdfSections.prestacao
 
       // ═══════════════════════════════════════
       // SEÇÕES 4 & 5: RENEGOCIAÇÃO (se ativo)
       // ═══════════════════════════════════════
-      if (data.houveRenegociacao) {
+      if (data.houveRenegociacao && pdfSections.renegProj) {
         const r = data.reneg;
         const rTaxa = safeFloat(r.taxaAplicada) / 100;
         const rPrazo = safeInt(r.prazo);
@@ -323,7 +335,7 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
 
           // Seção 5: Cálculo Prestação Renegociação
           const rParcelasPagas = safeInt(r.parcelasPagas);
-          if (rParcelasPagas > 0) {
+          if (rParcelasPagas > 0 && pdfSections.renegPrest) {
             const rSelectedIdx = r.saldoIdx >= 0 ? r.saldoIdx : rParcelasPagas + (rDiasCarencia > 0 ? 1 : 0);
             const rSaldoAtual = rSelectedIdx >= 0 && rSelectedIdx < tabelaReneg.rows.length ? tabelaReneg.rows[rSelectedIdx].saldo : 0;
             const rPrazoRest = rPrazo - rParcelasPagas;
@@ -367,7 +379,7 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
     const diasCarencia = calcCarenciaDias(data.dataContratacao, data.primeiraParcela);
     const valorTotal = Math.max(0, vf - tt);
 
-    if (!valorTotal || !taxaProj || !prazo) { toast.error("Preencha os dados"); return; }
+    if (!valorTotal && !prazo) { toast.error("Preencha os dados"); return; }
 
     const tabela = gerarTabelaAmortizacao({
       valorBase: valorTotal, taxa: taxaProj, prazo,
@@ -444,9 +456,38 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
         </div>
       </Tabs>
 
+      {/* PDF Section Toggles */}
+      {showPdfOptions && (
+        <div className="border border-border rounded-lg p-4 bg-muted/30 space-y-2">
+          <p className="text-xs font-bold text-foreground mb-2">Seções do PDF:</p>
+          <div className="flex flex-wrap gap-3">
+            {[
+              { key: "resumo" as const, label: "1. Resumo" },
+              { key: "projecao" as const, label: "2. Projeção Saldo" },
+              { key: "prestacao" as const, label: "3. Prestação Devida" },
+              { key: "renegProj" as const, label: "4. Reneg. Projeção" },
+              { key: "renegPrest" as const, label: "5. Reneg. Prestação" },
+            ].map(s => (
+              <label key={s.key} className="flex items-center gap-1.5 text-xs text-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={pdfSections[s.key]}
+                  onChange={e => setPdfSections(prev => ({ ...prev, [s.key]: e.target.checked }))}
+                  className="rounded border-input accent-primary w-3.5 h-3.5"
+                />
+                {s.label}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Actions */}
       <div className="flex flex-wrap gap-2 items-center justify-between">
         <div className="flex flex-wrap gap-2">
+          <button onClick={() => setShowPdfOptions(!showPdfOptions)} className="px-3 py-2 rounded-lg border border-input text-xs font-medium hover:bg-muted">
+            ⚙️ Seções PDF
+          </button>
           <button onClick={handleExportPDF} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90">
             <FileDown className="w-3.5 h-3.5" /> PDF
           </button>
