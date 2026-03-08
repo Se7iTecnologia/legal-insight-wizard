@@ -236,6 +236,7 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
       // ═══════════════════════════════════════
       // SEÇÃO 3: CÁLCULO PRESTAÇÃO DEVIDA
       // ═══════════════════════════════════════
+      if (pdfSections.prestacao) {
       doc.addPage();
       y = 20;
       y = drawSectionTitle(doc, "3. CÁLCULO PRESTAÇÃO DEVIDA", y, 3);
