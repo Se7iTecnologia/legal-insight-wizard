@@ -279,6 +279,7 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
         ]);
         y = drawBrandedTable(doc, head, body3, y);
       }
+      } // end pdfSections.prestacao
 
       // ═══════════════════════════════════════
       // SEÇÕES 4 & 5: RENEGOCIAÇÃO (se ativo)
