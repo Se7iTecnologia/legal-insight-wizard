@@ -383,7 +383,7 @@ export function Etapa3Planilha({ caso, onSave, onSaveBatch, saving }: Props) {
     const diasCarencia = calcCarenciaDias(data.dataContratacao, data.primeiraParcela);
     const valorTotal = Math.max(0, vf - tt);
 
-    if (!valorTotal && !prazo) { toast.error("Preencha os dados"); return; }
+    if (!valorTotal || !taxaProj || !prazo) { toast.error("Para CSV/Excel/JSON, preencha valor, taxa e prazo"); return; }
 
     const tabela = gerarTabelaAmortizacao({
       valorBase: valorTotal, taxa: taxaProj, prazo,
