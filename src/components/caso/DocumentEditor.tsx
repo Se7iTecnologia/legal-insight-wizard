@@ -264,19 +264,6 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
         </div>
       </div>
 
-      <style>{`
-        .editor-a4-container {
-          background-image: repeating-linear-gradient(
-            to bottom,
-            transparent 0px,
-            transparent calc(297mm - 1px),
-            #cbd5e1 calc(297mm - 1px),
-            #cbd5e1 297mm
-          );
-          background-size: 100% 297mm;
-          background-position: top;
-        }
-      `}</style>
     </div>
   );
 }
