@@ -494,7 +494,7 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
                   key={i}
                   className="absolute left-0 right-0 pointer-events-none"
                   style={{
-                    top: i * (A4_HEIGHT_PX + 40),
+                    top: i * (A4_HEIGHT_PX + PAGE_GAP),
                     height: A4_HEIGHT_PX,
                     width: A4_WIDTH_PX,
                   }}
