@@ -31,6 +31,7 @@ const tipoIcons: Record<string, any> = {
   hipossuficiencia: Shield,
   procuracao: ScrollText,
   proposta: Receipt,
+  autorizacao: BookCheck,
   custom: File,
 };
 
@@ -40,6 +41,7 @@ const tipoColors: Record<string, string> = {
   hipossuficiencia: "text-[hsl(var(--success))]",
   procuracao: "text-[hsl(var(--info-orange))]",
   proposta: "text-[hsl(var(--warning))]",
+  autorizacao: "text-[hsl(var(--success))]",
   custom: "text-muted-foreground",
 };
 
