@@ -1,98 +1,253 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { FileText } from "lucide-react";
+import { toast } from "sonner";
+import {
+  FileText, Plus, Pencil, Trash2, Download, Eye, ArrowLeft,
+  FileSignature, Scale, Shield, Receipt, ScrollText, File,
+} from "lucide-react";
+import { DocumentEditor } from "./DocumentEditor";
+import {
+  BUILTIN_TEMPLATES, buildVariableMap, replaceVariables,
+} from "@/lib/documentTemplates";
+import jsPDF from "jspdf";
 
 interface Props {
   caso: any;
 }
 
-export function Etapa5Documentos({ caso }: Props) {
-  const [templates, setTemplates] = useState<any[]>([]);
-  const [docs, setDocs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+interface DocRecord {
+  id: string;
+  titulo: string;
+  tipo: string;
+  conteudo: string;
+  criado_em: string;
+  versao: number;
+}
 
-  useEffect(() => {
-    Promise.all([
-      supabase.from("templates").select("id, nome, tipo, conteudo").order("nome"),
-      supabase.from("documentos_caso").select("id, titulo, tipo, criado_em").eq("caso_id", caso.id).order("criado_em", { ascending: false }),
-    ]).then(([tRes, dRes]) => {
-      setTemplates(tRes.data ?? []);
-      setDocs(dRes.data ?? []);
-      setLoading(false);
-    });
+const tipoIcons: Record<string, any> = {
+  peticao: Scale,
+  honorarios: FileSignature,
+  hipossuficiencia: Shield,
+  procuracao: ScrollText,
+  proposta: Receipt,
+  custom: File,
+};
+
+const tipoColors: Record<string, string> = {
+  peticao: "text-primary",
+  honorarios: "text-[hsl(var(--info-purple))]",
+  hipossuficiencia: "text-[hsl(var(--success))]",
+  procuracao: "text-[hsl(var(--info-orange))]",
+  proposta: "text-[hsl(var(--warning))]",
+  custom: "text-muted-foreground",
+};
+
+export function Etapa5Documentos({ caso }: Props) {
+  const [docs, setDocs] = useState<DocRecord[]>([]);
+  const [customTemplates, setCustomTemplates] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editingDoc, setEditingDoc] = useState<DocRecord | null>(null);
+  const [editorContent, setEditorContent] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [view, setView] = useState<"list" | "editor">("list");
+
+  const variableMap = buildVariableMap(caso);
+
+  const fetchDocs = useCallback(async () => {
+    const [dRes, tRes] = await Promise.all([
+      supabase.from("documentos_caso").select("id, titulo, tipo, conteudo, criado_em, versao")
+        .eq("caso_id", caso.id).order("criado_em", { ascending: false }),
+      supabase.from("templates").select("id, nome, tipo, conteudo, descricao").order("nome"),
+    ]);
+    setDocs(dRes.data as DocRecord[] ?? []);
+    setCustomTemplates(tRes.data ?? []);
+    setLoading(false);
   }, [caso.id]);
 
-  const generateDoc = async (template: any) => {
-    const c = (caso.contrato as any) || {};
-    let content = template.conteudo || "";
-    // Replace variables
-    const vars: Record<string, string> = {
-      "{{cliente.nome}}": caso.clientes?.nome || "",
-      "{{cliente.cpf_cnpj}}": caso.clientes?.cpf_cnpj || "",
-      "{{contrato.valorFinanciado}}": c.valorFinanciado || "",
-      "{{contrato.parcela}}": c.parcela || "",
-      "{{contrato.taxaMensal}}": c.taxaMensal || "",
-      "{{contrato.prazoMeses}}": c.prazoMeses || "",
-      "{{contrato.banco}}": c.banco || c.instituicao || "",
-      "{{caso.codigo}}": caso.codigo || "",
-    };
-    for (const [k, v] of Object.entries(vars)) {
-      content = content.replaceAll(k, v);
-    }
+  useEffect(() => { fetchDocs(); }, [fetchDocs]);
 
-    const { error } = await supabase.from("documentos_caso").insert({
+  const generateFromTemplate = async (template: { nome: string; tipo: string; conteudo: string }) => {
+    const processedContent = replaceVariables(template.conteudo, variableMap);
+
+    const { data, error } = await supabase.from("documentos_caso").insert({
       caso_id: caso.id,
       titulo: template.nome,
       tipo: template.tipo || "custom",
-      conteudo: content,
-    });
+      conteudo: processedContent,
+    }).select("id, titulo, tipo, conteudo, criado_em, versao").single();
 
-    if (!error) {
-      const { data } = await supabase.from("documentos_caso").select("id, titulo, tipo, criado_em").eq("caso_id", caso.id).order("criado_em", { ascending: false });
-      setDocs(data ?? []);
+    if (error) {
+      toast.error("Erro ao gerar documento");
+      return;
     }
+    toast.success("Documento gerado!");
+    setEditingDoc(data as DocRecord);
+    setEditorContent((data as DocRecord).conteudo);
+    setView("editor");
+    fetchDocs();
+  };
+
+  const saveDocument = async () => {
+    if (!editingDoc) return;
+    setSaving(true);
+    const { error } = await supabase.from("documentos_caso")
+      .update({ conteudo: editorContent, versao: (editingDoc.versao || 1) + 1 })
+      .eq("id", editingDoc.id);
+    if (error) toast.error("Erro ao salvar");
+    else {
+      toast.success("Documento salvo!");
+      setEditingDoc({ ...editingDoc, conteudo: editorContent, versao: (editingDoc.versao || 1) + 1 });
+      fetchDocs();
+    }
+    setSaving(false);
+  };
+
+  const openDoc = (doc: DocRecord) => {
+    setEditingDoc(doc);
+    setEditorContent(doc.conteudo);
+    setView("editor");
+  };
+
+  const deleteDoc = async (id: string) => {
+    const { error } = await supabase.from("documentos_caso").delete().eq("id", id);
+    if (error) toast.error("Erro ao excluir");
+    else { toast.success("Documento excluído"); fetchDocs(); }
+  };
+
+  const exportDocPDF = () => {
+    if (!editingDoc) return;
+    const doc = new jsPDF();
+    const el = document.createElement("div");
+    el.innerHTML = editorContent;
+    const text = el.innerText || el.textContent || "";
+    const lines = doc.splitTextToSize(text, 170);
+    doc.setFontSize(11);
+    let y = 20;
+    for (const line of lines) {
+      if (y > 275) { doc.addPage(); y = 20; }
+      doc.text(line, 20, y);
+      y += 6;
+    }
+    doc.save(`${editingDoc.titulo}.pdf`);
+    toast.success("PDF exportado!");
   };
 
   if (loading) return <p className="text-muted-foreground">Carregando...</p>;
 
+  // Editor view
+  if (view === "editor" && editingDoc) {
+    return (
+      <div className="space-y-4 animate-fade-in">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <button onClick={() => setView("list")}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <ArrowLeft className="w-4 h-4" /> Voltar aos Documentos
+          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={exportDocPDF}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm hover:bg-muted transition-colors">
+              <Download className="w-4 h-4" /> PDF
+            </button>
+            <button onClick={saveDocument} disabled={saving}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50">
+              {saving ? "Salvando..." : "Salvar Documento"}
+            </button>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <FileText className="w-5 h-5 text-primary" />
+          <h2 className="text-lg font-semibold text-foreground">{editingDoc.titulo}</h2>
+          <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">v{editingDoc.versao || 1}</span>
+        </div>
+        <DocumentEditor content={editorContent} onChange={setEditorContent} />
+      </div>
+    );
+  }
+
+  // List view
+  const allTemplates = [
+    ...BUILTIN_TEMPLATES.map(t => ({ ...t, source: "builtin" as const })),
+    ...customTemplates.map(t => ({ ...t, source: "custom" as const, conteudo: t.conteudo || "" })),
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
+      {/* Header */}
       <div className="flex items-center gap-3">
         <FileText className="w-5 h-5 text-primary" />
-        <h2 className="text-lg font-heading font-semibold text-foreground">Meus Templates</h2>
+        <h2 className="text-lg font-heading font-semibold text-foreground">Documentos do Caso</h2>
       </div>
-      <p className="text-sm text-muted-foreground">Templates personalizados com variáveis preenchidas automaticamente.</p>
+      <p className="text-sm text-muted-foreground">
+        Gere documentos jurídicos prontos com os dados do caso e do cliente preenchidos automaticamente.
+      </p>
 
-      {templates.length === 0 ? (
-        <div className="bg-muted/30 rounded-xl p-8 text-center">
-          <FileText className="w-10 h-10 text-muted-foreground/40 mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">Nenhum template cadastrado</p>
-          <p className="text-xs text-muted-foreground mt-1">Cadastre templates na seção de Templates</p>
-        </div>
-      ) : (
+      {/* Templates grid */}
+      <div>
+        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+          <Plus className="w-4 h-4" /> Gerar Novo Documento
+        </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {templates.map((t) => (
-            <button key={t.id} onClick={() => generateDoc(t)}
-              className="bg-card rounded-xl border-2 border-warning/30 p-5 text-left hover:border-warning hover:shadow-md transition-all group">
-              <FileText className="w-8 h-8 text-warning/60 mb-3" />
-              <p className="font-medium text-foreground text-sm uppercase leading-tight">{t.nome}</p>
-            </button>
-          ))}
+          {allTemplates.map((t) => {
+            const IconComp = tipoIcons[t.tipo] || FileText;
+            const color = tipoColors[t.tipo] || "text-muted-foreground";
+            return (
+              <button key={t.id} onClick={() => generateFromTemplate(t)}
+                className="bg-card rounded-xl border border-border p-4 text-left hover:border-primary/40 hover:shadow-md transition-all group active:scale-[0.98]">
+                <div className="flex items-start gap-3">
+                  <div className={`w-9 h-9 rounded-lg bg-muted/50 flex items-center justify-center shrink-0 ${color}`}>
+                    <IconComp className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-medium text-foreground text-sm leading-tight">{t.nome}</p>
+                    {t.source === "custom" && (
+                      <span className="text-[10px] bg-warning/15 text-warning px-1.5 py-0.5 rounded-full mt-1 inline-block">Personalizado</span>
+                    )}
+                    {"descricao" in t && t.descricao && (
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{t.descricao}</p>
+                    )}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
         </div>
-      )}
+      </div>
 
+      {/* Generated docs */}
       {docs.length > 0 && (
         <div className="space-y-3 pt-4 border-t border-border">
-          <h3 className="text-sm font-medium text-foreground">Documentos Gerados ({docs.length})</h3>
-          {docs.map((d) => (
-            <div key={d.id} className="flex items-center gap-3 bg-muted/30 rounded-lg px-4 py-3">
-              <FileText className="w-4 h-4 text-primary shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{d.titulo}</p>
-                <p className="text-xs text-muted-foreground">{d.tipo} · {new Date(d.criado_em).toLocaleDateString("pt-BR")}</p>
-              </div>
-            </div>
-          ))}
+          <h3 className="text-sm font-semibold text-foreground">
+            Documentos Gerados ({docs.length})
+          </h3>
+          <div className="space-y-2">
+            {docs.map((d) => {
+              const IconComp = tipoIcons[d.tipo] || FileText;
+              const color = tipoColors[d.tipo] || "text-muted-foreground";
+              return (
+                <div key={d.id} className="flex items-center gap-3 bg-muted/30 rounded-lg px-4 py-3 group hover:bg-muted/50 transition-colors">
+                  <div className={`w-8 h-8 rounded-lg bg-card flex items-center justify-center shrink-0 ${color}`}>
+                    <IconComp className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{d.titulo}</p>
+                    <p className="text-xs text-muted-foreground">
+                      v{d.versao || 1} · {new Date(d.criado_em).toLocaleDateString("pt-BR")}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => openDoc(d)} title="Editar"
+                      className="p-1.5 rounded-md hover:bg-background transition-colors">
+                      <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                    </button>
+                    <button onClick={() => deleteDoc(d.id)} title="Excluir"
+                      className="p-1.5 rounded-md hover:bg-destructive/10 transition-colors">
+                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
