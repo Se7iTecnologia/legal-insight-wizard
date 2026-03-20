@@ -32,6 +32,7 @@ export interface PlanilhaData {
   dataContratacao: string;
   primeiraParcela: string;
   taxaMensal: string;
+  taxaAnual: string;
   prestacao: string;
   valorFinanciado: string;
   prazo: string;
