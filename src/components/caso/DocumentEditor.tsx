@@ -527,9 +527,24 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
                 </div>
               ))}
 
+              {/* Gap covers: opaque overlays that hide text between pages */}
+              {Array.from({ length: Math.max(0, pageCount - 1) }).map((_, i) => (
+                <div
+                  key={`gap-${i}`}
+                  className="absolute left-0 pointer-events-none"
+                  style={{
+                    top: (i + 1) * A4_HEIGHT_PX + i * PAGE_GAP,
+                    height: PAGE_GAP,
+                    width: A4_WIDTH_PX,
+                    backgroundColor: "#E8EAED",
+                    zIndex: 20,
+                  }}
+                />
+              ))}
+
               {/* Editor content overlaid on top of pages */}
               <div
-                className="relative z-10"
+                className="relative z-10 doc-content-clipped"
                 style={{
                   paddingLeft: marginsPx.left,
                   paddingRight: marginsPx.right,
