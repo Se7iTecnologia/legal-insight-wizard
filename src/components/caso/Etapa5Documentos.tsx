@@ -303,6 +303,14 @@ export function Etapa5Documentos({ caso }: Props) {
           </div>
         </div>
       )}
+
+      <ConfirmDelete
+        open={!!deleteDocId}
+        onOpenChange={(o) => !o && setDeleteDocId(null)}
+        onConfirm={deleteDoc}
+        loading={deletingDoc}
+        description="Tem certeza que deseja excluir este documento? Esta ação não pode ser desfeita."
+      />
     </div>
   );
 }

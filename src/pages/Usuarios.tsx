@@ -230,6 +230,15 @@ export default function Usuarios() {
       </Dialog>
 
       <ConfirmDelete open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)} onConfirm={handleDelete} loading={deleting} description="Tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita." />
+
+      {/* Role change confirmation */}
+      <ConfirmDelete
+        open={!!pendingRole}
+        onOpenChange={(o) => !o && setPendingRole(null)}
+        title="Confirmar alteração"
+        description={`Deseja alterar o papel deste usuário para "${pendingRole ? ({ admin: "Admin", advogado: "Advogado", operador: "Operador" }[pendingRole.role] || pendingRole.role) : ""}"?`}
+        onConfirm={handleRoleChange}
+      />
     </div>
   );
 }
