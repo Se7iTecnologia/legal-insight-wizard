@@ -522,6 +522,7 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
                   paddingLeft: marginsPx.left,
                   paddingRight: marginsPx.right,
                   paddingTop: marginsPx.top,
+                  paddingBottom: marginsPx.bottom,
                   width: A4_WIDTH_PX,
                 }}
               >
