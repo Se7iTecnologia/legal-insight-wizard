@@ -59,6 +59,7 @@ const HIGHLIGHT_COLORS = [
 const A4_WIDTH_PX = 794;  // 210mm
 const A4_HEIGHT_PX = 1123; // 297mm
 const MM_TO_PX = 3.7795;  // 1mm = 3.7795px at 96dpi
+const PAGE_GAP = 40;      // px visual gap between pages
 
 export function DocumentEditor({ content, onChange, readOnly }: Props) {
   const [showVars, setShowVars] = useState(false);
@@ -70,6 +71,7 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
   const [margins, setMargins] = useState({ top: 25, bottom: 25, left: 20, right: 20 });
   const [pageCount, setPageCount] = useState(1);
   const editorContainerRef = useRef<HTMLDivElement>(null);
+  const isRecalcRef = useRef(false);
 
   const marginsPx = {
     top: Math.round(margins.top * MM_TO_PX),
@@ -101,15 +103,78 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
     onUpdate: ({ editor: ed }) => onChange(ed.getHTML()),
   });
 
-  // Calculate page count based on content height
-  const recalcPages = useCallback(() => {
-    if (!editorContainerRef.current) return;
-    const prosemirror = editorContainerRef.current.querySelector(".ProseMirror");
-    if (!prosemirror) return;
-    const scrollH = (prosemirror as HTMLElement).scrollHeight;
-    const pages = Math.max(1, Math.ceil(scrollH / contentHeightPerPage));
+  // Automatic page break: push elements that cross page boundaries to the next page
+  const recalcPageBreaks = useCallback(() => {
+    if (isRecalcRef.current) return;
+    const pm = editorContainerRef.current?.querySelector('.ProseMirror') as HTMLElement;
+    if (!pm) return;
+
+    isRecalcRef.current = true;
+
+    const children = Array.from(pm.children) as HTMLElement[];
+    if (!children.length) {
+      setPageCount(1);
+      isRecalcRef.current = false;
+      return;
+    }
+
+    // 1. Clear all previously injected page-break margins
+    children.forEach(c => {
+      if (c.dataset.pageBreak) {
+        c.style.marginTop = '';
+        delete c.dataset.pageBreak;
+      }
+    });
+
+    // 2. Force reflow so we measure natural positions
+    void pm.offsetHeight;
+
+    // 3. Measure all children in their natural positions
+    const measures = children.map(c => ({
+      el: c,
+      top: c.offsetTop,
+      height: c.offsetHeight,
+    }));
+
+    const pageH = contentHeightPerPage;
+    const gapH = PAGE_GAP + marginsPx.top + marginsPx.bottom;
+
+    let shift = 0;
+    let nextBreak = pageH;
+
+    for (const m of measures) {
+      const effTop = m.top + shift;
+
+      // Advance break point if element is already past it
+      while (nextBreak <= effTop) {
+        nextBreak += pageH + gapH;
+      }
+
+      // Skip elements taller than a full page (can't split them)
+      if (m.height >= pageH) continue;
+
+      const effBottom = effTop + m.height;
+
+      // Does this element cross the page boundary?
+      if (effBottom > nextBreak && effTop < nextBreak) {
+        const push = (nextBreak - effTop) + gapH;
+        m.el.style.marginTop = `${push}px`;
+        m.el.dataset.pageBreak = '1';
+        shift += push;
+        nextBreak += pageH + gapH;
+      }
+    }
+
+    // 4. Recalculate page count from actual rendered height
+    void pm.offsetHeight;
+    const totalH = pm.scrollHeight;
+    const pages = Math.max(1, Math.ceil((totalH + gapH) / (pageH + gapH)));
     setPageCount(pages);
-  }, [contentHeightPerPage]);
+
+    requestAnimationFrame(() => {
+      isRecalcRef.current = false;
+    });
+  }, [contentHeightPerPage, marginsPx]);
 
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {
@@ -117,13 +182,12 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
     }
   }, [content]);
 
-  // Recalc pages on content change and resize
+  // Recalc page breaks on content change and resize
   useEffect(() => {
     if (!editor) return;
-    const handler = () => requestAnimationFrame(recalcPages);
+    const handler = () => requestAnimationFrame(recalcPageBreaks);
     editor.on("update", handler);
-    // Initial calculation
-    const timer = setTimeout(handler, 100);
+    const timer = setTimeout(handler, 150);
     const resizeObs = new ResizeObserver(handler);
     if (editorContainerRef.current) {
       const pm = editorContainerRef.current.querySelector(".ProseMirror");
@@ -134,12 +198,12 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
       clearTimeout(timer);
       resizeObs.disconnect();
     };
-  }, [editor, recalcPages]);
+  }, [editor, recalcPageBreaks]);
 
   // Recalc on margin change
   useEffect(() => {
-    requestAnimationFrame(recalcPages);
-  }, [margins, recalcPages]);
+    requestAnimationFrame(recalcPageBreaks);
+  }, [margins, recalcPageBreaks]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -184,7 +248,7 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
 
   const Divider = () => <div className="w-px h-6 bg-border mx-0.5 shrink-0" />;
 
-  const totalHeight = pageCount * A4_HEIGHT_PX + (pageCount - 1) * 40; // 40px gap between pages
+  const totalHeight = pageCount * A4_HEIGHT_PX + (pageCount - 1) * PAGE_GAP;
 
   return (
     <div className="flex flex-col border border-border rounded-xl overflow-hidden bg-card shadow-sm" style={{ height: "80vh" }}>
@@ -430,7 +494,7 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
                   key={i}
                   className="absolute left-0 right-0 pointer-events-none"
                   style={{
-                    top: i * (A4_HEIGHT_PX + 40),
+                    top: i * (A4_HEIGHT_PX + PAGE_GAP),
                     height: A4_HEIGHT_PX,
                     width: A4_WIDTH_PX,
                   }}
@@ -458,6 +522,7 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
                   paddingLeft: marginsPx.left,
                   paddingRight: marginsPx.right,
                   paddingTop: marginsPx.top,
+                  paddingBottom: marginsPx.bottom,
                   width: A4_WIDTH_PX,
                 }}
               >
