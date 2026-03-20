@@ -59,6 +59,7 @@ const HIGHLIGHT_COLORS = [
 const A4_WIDTH_PX = 794;  // 210mm
 const A4_HEIGHT_PX = 1123; // 297mm
 const MM_TO_PX = 3.7795;  // 1mm = 3.7795px at 96dpi
+const PAGE_GAP = 40;      // px visual gap between pages
 
 export function DocumentEditor({ content, onChange, readOnly }: Props) {
   const [showVars, setShowVars] = useState(false);
