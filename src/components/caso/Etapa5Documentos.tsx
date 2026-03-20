@@ -6,6 +6,7 @@ import {
   FileSignature, Scale, Shield, Receipt, ScrollText, File, BookCheck,
 } from "lucide-react";
 import { DocumentEditor } from "./DocumentEditor";
+import { ConfirmDelete } from "@/components/ConfirmDelete";
 import {
   BUILTIN_TEMPLATES, buildVariableMap, replaceVariables,
 } from "@/lib/documentTemplates";
@@ -111,10 +112,17 @@ export function Etapa5Documentos({ caso }: Props) {
     setView("editor");
   };
 
-  const deleteDoc = async (id: string) => {
-    const { error } = await supabase.from("documentos_caso").delete().eq("id", id);
+  const [deleteDocId, setDeleteDocId] = useState<string | null>(null);
+  const [deletingDoc, setDeletingDoc] = useState(false);
+
+  const deleteDoc = async () => {
+    if (!deleteDocId) return;
+    setDeletingDoc(true);
+    const { error } = await supabase.from("documentos_caso").delete().eq("id", deleteDocId);
     if (error) toast.error("Erro ao excluir");
     else { toast.success("Documento excluído"); fetchDocs(); }
+    setDeleteDocId(null);
+    setDeletingDoc(false);
   };
 
   const exportDocPDF = async () => {
@@ -284,7 +292,7 @@ export function Etapa5Documentos({ caso }: Props) {
                       className="p-1.5 rounded-md hover:bg-background transition-colors">
                       <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
                     </button>
-                    <button onClick={() => deleteDoc(d.id)} title="Excluir"
+                    <button onClick={() => setDeleteDocId(d.id)} title="Excluir"
                       className="p-1.5 rounded-md hover:bg-destructive/10 transition-colors">
                       <Trash2 className="w-3.5 h-3.5 text-destructive" />
                     </button>
@@ -295,6 +303,14 @@ export function Etapa5Documentos({ caso }: Props) {
           </div>
         </div>
       )}
+
+      <ConfirmDelete
+        open={!!deleteDocId}
+        onOpenChange={(o) => !o && setDeleteDocId(null)}
+        onConfirm={deleteDoc}
+        loading={deletingDoc}
+        description="Tem certeza que deseja excluir este documento? Esta ação não pode ser desfeita."
+      />
     </div>
   );
 }
