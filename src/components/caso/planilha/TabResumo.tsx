@@ -10,7 +10,6 @@ interface Props {
 
 export function TabResumo({ data, tarifas, onChange, onTarifasChange }: Props) {
   const taxaM = safeFloat(data.taxaMensal) / 100;
-  const taxaA = taxaM ? calcTaxaAnual(taxaM) : 0;
   const carencia = calcCarenciaDias(data.dataContratacao, data.primeiraParcela);
   const vf = safeFloat(data.valorFinanciado);
   const prest = safeFloat(data.prestacao);
