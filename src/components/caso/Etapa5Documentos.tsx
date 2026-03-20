@@ -2,14 +2,15 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
-  FileText, Plus, Pencil, Trash2, Download, Eye, ArrowLeft,
-  FileSignature, Scale, Shield, Receipt, ScrollText, File,
+  FileText, Plus, Pencil, Trash2, Download, ArrowLeft,
+  FileSignature, Scale, Shield, Receipt, ScrollText, File, BookCheck,
 } from "lucide-react";
 import { DocumentEditor } from "./DocumentEditor";
 import {
   BUILTIN_TEMPLATES, buildVariableMap, replaceVariables,
 } from "@/lib/documentTemplates";
 import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 interface Props {
   caso: any;
