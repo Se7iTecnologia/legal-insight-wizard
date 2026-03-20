@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import {
   FileText, Plus, Pencil, Trash2, Download, ArrowLeft,
   FileSignature, Scale, Shield, Receipt, ScrollText, File, BookCheck,
+  FileDown, FileType,
 } from "lucide-react";
 import { DocumentEditor } from "./DocumentEditor";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
