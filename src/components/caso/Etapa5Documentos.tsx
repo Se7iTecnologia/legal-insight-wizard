@@ -127,17 +127,14 @@ export function Etapa5Documentos({ caso }: Props) {
     setDeletingDoc(false);
   };
 
-  const exportDocPDF = async () => {
-    if (!editingDoc) return;
+  const doExportPDF = async (htmlContent: string, title: string) => {
     toast.info("Gerando PDF...");
-
-    // Create a temporary container matching editor styles
     const container = document.createElement("div");
     container.style.position = "absolute";
     container.style.left = "-9999px";
     container.style.top = "0";
-    container.style.width = "794px"; // A4 at 96dpi
-    container.style.padding = "94px 76px"; // ~25mm/20mm margins
+    container.style.width = "794px";
+    container.style.padding = "94px 76px";
     container.style.backgroundColor = "white";
     container.style.fontFamily = "Times, serif";
     container.style.fontSize = "11pt";
@@ -153,41 +150,40 @@ export function Etapa5Documentos({ caso }: Props) {
       ul { list-style: disc; padding-left: 20px; margin-bottom: 8px; }
       ol { list-style: decimal; padding-left: 20px; margin-bottom: 8px; }
       li { font-size: 11pt; margin-bottom: 4px; }
-    </style>${editorContent}`;
+    </style>${htmlContent}`;
     document.body.appendChild(container);
-
     try {
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        windowWidth: 794,
-      });
-
+      const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: "#ffffff", windowWidth: 794 });
       const imgData = canvas.toDataURL("image/jpeg", 0.95);
       const pdf = new jsPDF("p", "mm", "a4");
       const pageWidth = 210;
       const pageHeight = 297;
-      const contentWidth = pageWidth;
-      const imgHeight = (canvas.height * contentWidth) / canvas.width;
-
+      const imgHeight = (canvas.height * pageWidth) / canvas.width;
       let y = 0;
       let remaining = imgHeight;
-
       while (remaining > 0) {
         if (y > 0) pdf.addPage();
-        pdf.addImage(imgData, "JPEG", 0, -y, contentWidth, imgHeight);
+        pdf.addImage(imgData, "JPEG", 0, -y, pageWidth, imgHeight);
         y += pageHeight;
         remaining -= pageHeight;
       }
-
-      pdf.save(`${editingDoc.titulo}.pdf`);
+      pdf.save(`${title}.pdf`);
       toast.success("PDF exportado!");
-    } catch {
-      toast.error("Erro ao gerar PDF");
-    } finally {
-      document.body.removeChild(container);
-    }
+    } catch { toast.error("Erro ao gerar PDF"); }
+    finally { document.body.removeChild(container); }
+  };
+
+  const doExportWord = async (htmlContent: string, title: string) => {
+    toast.info("Gerando Word...");
+    try {
+      await exportToWord(htmlContent, title);
+      toast.success("Word exportado!");
+    } catch { toast.error("Erro ao gerar Word"); }
+  };
+
+  const exportDocPDF = () => {
+    if (!editingDoc) return;
+    doExportPDF(editorContent, editingDoc.titulo);
   };
 
   if (loading) return <p className="text-muted-foreground">Carregando...</p>;
