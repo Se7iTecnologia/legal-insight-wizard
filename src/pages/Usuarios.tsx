@@ -152,7 +152,7 @@ export default function Usuarios() {
                     </span>
                   </div>
                   <div className="flex gap-1">
-                    <select value={roles[u.id] || ""} onChange={(e) => handleRoleChange(u.id, e.target.value)} className="text-xs rounded border border-input px-1 py-1 bg-background">
+                    <select value={roles[u.id] || ""} onChange={(e) => setPendingRole({ userId: u.id, role: e.target.value })} className="text-xs rounded border border-input px-1 py-1 bg-background">
                       <option value="admin">Admin</option>
                       <option value="advogado">Advogado</option>
                       <option value="operador">Operador</option>
