@@ -13,6 +13,13 @@ import {
 } from "@/lib/documentTemplates";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import {
+  A4_HEIGHT_PX,
+  A4_WIDTH_PX,
+  applyDocumentPageBreaks,
+  MM_TO_PX,
+  PAGE_GAP,
+} from "@/lib/documentPagination";
 import { exportToWord } from "@/lib/exportWord";
 
 interface Props {
@@ -130,78 +137,110 @@ export function Etapa5Documentos({ caso }: Props) {
   const doExportPDF = async (htmlContent: string, title: string) => {
     toast.info("Gerando PDF...");
 
-    // A4 dimensions at 96dpi
-    const pageW = 794;
-    const pageH = 1123;
-    const padX = 76;  // ~20mm
-    const padY = 94;  // ~25mm
-    const contentH = pageH - padY * 2;
+    const marginsPx = {
+      top: Math.round(25 * MM_TO_PX),
+      bottom: Math.round(25 * MM_TO_PX),
+      left: Math.round(20 * MM_TO_PX),
+      right: Math.round(20 * MM_TO_PX),
+    };
+    const contentHeightPerPage = A4_HEIGHT_PX - marginsPx.top - marginsPx.bottom;
 
-    // Render the content off-screen to measure total height
     const container = document.createElement("div");
-    container.style.position = "absolute";
-    container.style.left = "-9999px";
+    container.style.position = "fixed";
+    container.style.left = "-10000px";
     container.style.top = "0";
-    container.style.width = `${pageW - padX * 2}px`;
-    container.style.backgroundColor = "white";
-    container.style.fontFamily = '"Times New Roman", Times, serif';
-    container.style.fontSize = "12pt";
-    container.style.lineHeight = "1.6";
-    container.style.color = "#1a1a1a";
-    container.innerHTML = `<style>
-      h1 { font-size: 16pt; font-weight: bold; margin-bottom: 12px; }
-      h2 { font-size: 13pt; font-weight: bold; margin-bottom: 8px; margin-top: 18px; }
-      h3 { font-size: 12pt; font-weight: bold; margin-bottom: 6px; margin-top: 14px; }
-      p { margin-bottom: 8px; font-size: 12pt; line-height: 1.6; }
-      table { border-collapse: collapse; width: 100%; margin-bottom: 12px; }
-      td, th { border: 1px solid #d1d5db; padding: 6px 10px; font-size: 10pt; }
-      th { background: #f3f4f6; font-weight: 600; }
-      ul { list-style: disc; padding-left: 24px; margin-bottom: 8px; }
-      ol { list-style: decimal; padding-left: 24px; margin-bottom: 8px; }
-      li { font-size: 12pt; margin-bottom: 4px; }
-      hr { border: none; border-top: 1px solid #d1d5db; margin: 16px 0; }
-    </style>${htmlContent}`;
+    container.style.width = `${A4_WIDTH_PX}px`;
+    container.style.background = "white";
+
+    const style = document.createElement("style");
+    style.textContent = `
+      .export-doc-frame { position: relative; width: ${A4_WIDTH_PX}px; }
+      .export-doc-page { position: absolute; left: 0; width: ${A4_WIDTH_PX}px; height: ${A4_HEIGHT_PX}px; background: white; }
+      .export-doc-content { position: relative; z-index: 1; width: ${A4_WIDTH_PX}px; padding: ${marginsPx.top}px ${marginsPx.right}px ${marginsPx.bottom}px ${marginsPx.left}px; }
+      .export-doc-content .ProseMirror,
+      .export-doc-content .export-prosemirror {
+        outline: none;
+        min-height: ${contentHeightPerPage}px;
+        font-family: "Times New Roman", serif;
+        font-size: 12pt;
+        line-height: 1.6;
+        color: #1a1a1a;
+      }
+      .export-doc-content .export-prosemirror h1 { font-size: 16pt; font-weight: 700; margin-bottom: 12px; line-height: 1.3; }
+      .export-doc-content .export-prosemirror h2 { font-size: 13pt; font-weight: 700; margin-bottom: 8px; margin-top: 18px; line-height: 1.3; }
+      .export-doc-content .export-prosemirror h3 { font-size: 12pt; font-weight: 700; margin-bottom: 6px; margin-top: 14px; line-height: 1.3; }
+      .export-doc-content .export-prosemirror p { margin-bottom: 8px; font-size: inherit; line-height: 1.6; color: #1a1a1a; }
+      .export-doc-content .export-prosemirror table { border-collapse: collapse; width: 100%; margin-bottom: 12px; }
+      .export-doc-content .export-prosemirror td,
+      .export-doc-content .export-prosemirror th { border: 1px solid #d1d5db; padding: 6px 10px; font-size: 10pt; vertical-align: top; }
+      .export-doc-content .export-prosemirror th { background: #f3f4f6; font-weight: 600; }
+      .export-doc-content .export-prosemirror ul { list-style: disc; padding-left: 24px; margin-bottom: 8px; }
+      .export-doc-content .export-prosemirror ol { list-style: decimal; padding-left: 24px; margin-bottom: 8px; }
+      .export-doc-content .export-prosemirror li { font-size: inherit; margin-bottom: 4px; }
+      .export-doc-content .export-prosemirror hr { border: none; border-top: 1px solid #d1d5db; margin: 16px 0; }
+      .export-doc-content .export-prosemirror img { max-width: 100%; height: auto; }
+      .export-doc-content .export-prosemirror .tableWrapper { overflow: hidden; }
+    `;
+
+    const frame = document.createElement("div");
+    frame.className = "export-doc-frame";
+
+    const contentLayer = document.createElement("div");
+    contentLayer.className = "export-doc-content";
+
+    const contentRoot = document.createElement("div");
+    contentRoot.className = "export-prosemirror";
+    contentRoot.innerHTML = htmlContent;
+
+    contentLayer.appendChild(contentRoot);
+    container.append(style, frame);
+    frame.appendChild(contentLayer);
     document.body.appendChild(container);
 
     try {
-      // Capture full content as one tall image
-      const canvas = await html2canvas(container, {
+      const pageCount = applyDocumentPageBreaks(contentRoot, {
+        contentHeightPerPage,
+        marginsPx,
+        overflowThreshold: 0,
+      });
+
+      frame.style.height = `${pageCount * A4_HEIGHT_PX + (pageCount - 1) * PAGE_GAP}px`;
+
+      Array.from({ length: pageCount }).forEach((_, index) => {
+        const page = document.createElement("div");
+        page.className = "export-doc-page";
+        page.style.top = `${index * (A4_HEIGHT_PX + PAGE_GAP)}px`;
+        frame.insertBefore(page, contentLayer);
+      });
+
+      const canvas = await html2canvas(frame, {
         scale: 2,
         useCORS: true,
         backgroundColor: "#ffffff",
-        windowWidth: pageW - padX * 2,
+        width: A4_WIDTH_PX,
+        height: frame.offsetHeight,
+        windowWidth: A4_WIDTH_PX,
       });
 
       const pdf = new jsPDF("p", "mm", "a4");
-      const pdfW = 210;
-      const pdfH = 297;
-      const marginXmm = 20;
-      const marginYmm = 25;
-      const contentWmm = pdfW - marginXmm * 2;
-      const contentHmm = pdfH - marginYmm * 2;
+      const scale = canvas.width / A4_WIDTH_PX;
 
-      // Scale canvas to content area
-      const scaledImgH = (canvas.height * contentWmm) / canvas.width;
-      const totalPages = Math.ceil(scaledImgH / contentHmm);
-
-      for (let page = 0; page < totalPages; page++) {
+      for (let page = 0; page < pageCount; page++) {
         if (page > 0) pdf.addPage();
 
-        // Clip the image for this page
-        const srcY = (page * contentHmm / scaledImgH) * canvas.height;
-        const srcH = Math.min((contentHmm / scaledImgH) * canvas.height, canvas.height - srcY);
+        const srcY = Math.round(page * (A4_HEIGHT_PX + PAGE_GAP) * scale);
+        const srcH = Math.min(Math.round(A4_HEIGHT_PX * scale), canvas.height - srcY);
 
         const pageCanvas = document.createElement("canvas");
         pageCanvas.width = canvas.width;
-        pageCanvas.height = Math.round(srcH);
+        pageCanvas.height = srcH;
         const ctx = pageCanvas.getContext("2d")!;
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-        ctx.drawImage(canvas, 0, Math.round(srcY), canvas.width, Math.round(srcH), 0, 0, canvas.width, Math.round(srcH));
+        ctx.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
 
-        const pageImgData = pageCanvas.toDataURL("image/jpeg", 0.95);
-        const thisPageHmm = (pageCanvas.height * contentWmm) / pageCanvas.width;
-        pdf.addImage(pageImgData, "JPEG", marginXmm, marginYmm, contentWmm, thisPageHmm);
+        const pageImgData = pageCanvas.toDataURL("image/png");
+        pdf.addImage(pageImgData, "PNG", 0, 0, 210, 297);
       }
 
       pdf.save(`${title}.pdf`);
