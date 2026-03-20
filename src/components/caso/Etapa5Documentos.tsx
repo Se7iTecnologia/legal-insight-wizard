@@ -213,10 +213,7 @@ export function Etapa5Documentos({ caso }: Props) {
   }
 
   // List view
-  const allTemplates = [
-    ...BUILTIN_TEMPLATES.map(t => ({ ...t, source: "builtin" as const })),
-    ...customTemplates.map(t => ({ ...t, source: "custom" as const, conteudo: t.conteudo || "" })),
-  ];
+  const allTemplates = customTemplates.map(t => ({ ...t, source: "custom" as const, conteudo: t.conteudo || "" }));
 
   return (
     <div className="space-y-6 animate-fade-in">
