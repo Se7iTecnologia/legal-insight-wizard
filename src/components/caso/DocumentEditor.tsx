@@ -142,7 +142,7 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
     // Tolerance: only push if most of the element overflows past the page boundary.
     // This allows content to flow naturally across page boundaries (like Word).
     // Only elements where >80% spills over get pushed to the next page.
-    const OVERFLOW_THRESHOLD = 0.80;
+    const OVERFLOW_THRESHOLD = 0;
 
     let shift = 0;
     let nextBreak = pageH;
