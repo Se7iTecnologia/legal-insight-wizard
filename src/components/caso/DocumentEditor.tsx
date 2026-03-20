@@ -103,15 +103,78 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
     onUpdate: ({ editor: ed }) => onChange(ed.getHTML()),
   });
 
-  // Calculate page count based on content height
-  const recalcPages = useCallback(() => {
-    if (!editorContainerRef.current) return;
-    const prosemirror = editorContainerRef.current.querySelector(".ProseMirror");
-    if (!prosemirror) return;
-    const scrollH = (prosemirror as HTMLElement).scrollHeight;
-    const pages = Math.max(1, Math.ceil(scrollH / contentHeightPerPage));
+  // Automatic page break: push elements that cross page boundaries to the next page
+  const recalcPageBreaks = useCallback(() => {
+    if (isRecalcRef.current) return;
+    const pm = editorContainerRef.current?.querySelector('.ProseMirror') as HTMLElement;
+    if (!pm) return;
+
+    isRecalcRef.current = true;
+
+    const children = Array.from(pm.children) as HTMLElement[];
+    if (!children.length) {
+      setPageCount(1);
+      isRecalcRef.current = false;
+      return;
+    }
+
+    // 1. Clear all previously injected page-break margins
+    children.forEach(c => {
+      if (c.dataset.pageBreak) {
+        c.style.marginTop = '';
+        delete c.dataset.pageBreak;
+      }
+    });
+
+    // 2. Force reflow so we measure natural positions
+    void pm.offsetHeight;
+
+    // 3. Measure all children in their natural positions
+    const measures = children.map(c => ({
+      el: c,
+      top: c.offsetTop,
+      height: c.offsetHeight,
+    }));
+
+    const pageH = contentHeightPerPage;
+    const gapH = PAGE_GAP + marginsPx.top + marginsPx.bottom;
+
+    let shift = 0;
+    let nextBreak = pageH;
+
+    for (const m of measures) {
+      const effTop = m.top + shift;
+
+      // Advance break point if element is already past it
+      while (nextBreak <= effTop) {
+        nextBreak += pageH + gapH;
+      }
+
+      // Skip elements taller than a full page (can't split them)
+      if (m.height >= pageH) continue;
+
+      const effBottom = effTop + m.height;
+
+      // Does this element cross the page boundary?
+      if (effBottom > nextBreak && effTop < nextBreak) {
+        const push = (nextBreak - effTop) + gapH;
+        m.el.style.marginTop = `${push}px`;
+        m.el.dataset.pageBreak = '1';
+        shift += push;
+        nextBreak += pageH + gapH;
+      }
+    }
+
+    // 4. Recalculate page count from actual rendered height
+    void pm.offsetHeight;
+    const totalH = pm.scrollHeight;
+    const pages = Math.max(1, Math.ceil((totalH + gapH) / (pageH + gapH)));
     setPageCount(pages);
-  }, [contentHeightPerPage]);
+
+    requestAnimationFrame(() => {
+      isRecalcRef.current = false;
+    });
+  }, [contentHeightPerPage, marginsPx]);
 
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {
