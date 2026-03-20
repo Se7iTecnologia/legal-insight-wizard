@@ -129,14 +129,12 @@ function htmlToDocxElements(html: string): (Paragraph | Table)[] {
     if (tag === "ul" || tag === "ol") {
       node.querySelectorAll(":scope > li").forEach((li, idx) => {
         const runs = extractRuns(li);
-        const opts: IParagraphOptions = {
-          children: runs.length ? runs : [new TextRun("")],
-          spacing: { after: 80 },
-        };
-        // Simple bullet/number prefix since numbering config is complex
         const prefix = tag === "ol" ? `${idx + 1}. ` : "• ";
-        opts.children = [new TextRun({ text: prefix }), ...(opts.children as TextRun[])];
-        elements.push(new Paragraph(opts));
+        const allRuns = [new TextRun({ text: prefix }), ...(runs.length ? runs : [new TextRun("")])];
+        elements.push(new Paragraph({
+          children: allRuns,
+          spacing: { after: 80 },
+        }));
       });
       return;
     }
