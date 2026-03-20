@@ -139,9 +139,10 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
     const pageH = contentHeightPerPage;
     const gapH = PAGE_GAP + marginsPx.top + marginsPx.bottom;
 
-    // Tolerance: only push if the element overflows by more than 30% of its height
-    // This prevents tiny overflows from causing huge visual gaps
-    const OVERFLOW_THRESHOLD = 0.30;
+    // Tolerance: only push if most of the element overflows past the page boundary.
+    // This allows content to flow naturally across page boundaries (like Word).
+    // Only elements where >80% spills over get pushed to the next page.
+    const OVERFLOW_THRESHOLD = 0.80;
 
     let shift = 0;
     let nextBreak = pageH;
