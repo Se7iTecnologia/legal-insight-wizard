@@ -12,6 +12,7 @@ import {
 } from "@/lib/documentTemplates";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import { exportToWord } from "@/lib/exportWord";
 
 interface Props {
   caso: any;
