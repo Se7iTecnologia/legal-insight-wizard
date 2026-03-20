@@ -6,6 +6,7 @@ import {
   FileSignature, Scale, Shield, Receipt, ScrollText, File, BookCheck,
 } from "lucide-react";
 import { DocumentEditor } from "./DocumentEditor";
+import { ConfirmDelete } from "@/components/ConfirmDelete";
 import {
   BUILTIN_TEMPLATES, buildVariableMap, replaceVariables,
 } from "@/lib/documentTemplates";
