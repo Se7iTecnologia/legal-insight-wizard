@@ -17,7 +17,7 @@ import {
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
   List, ListOrdered, Undo2, Redo2, Palette,
   Table as TableIcon, Code, Minus, ChevronDown, Highlighter,
-  Indent, Outdent,
+  Indent, Outdent, Settings2,
 } from "lucide-react";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { AVAILABLE_VARIABLES, type DocVariable } from "@/lib/documentTemplates";
@@ -55,6 +55,11 @@ const HIGHLIGHT_COLORS = [
   { color: "#fed7aa", label: "Laranja" },
 ];
 
+// A4 dimensions at 96 DPI
+const A4_WIDTH_PX = 794;  // 210mm
+const A4_HEIGHT_PX = 1123; // 297mm
+const MM_TO_PX = 3.7795;  // 1mm = 3.7795px at 96dpi
+
 export function DocumentEditor({ content, onChange, readOnly }: Props) {
   const [showVars, setShowVars] = useState(false);
   const [varSearch, setVarSearch] = useState("");
@@ -63,6 +68,17 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
   const highlightRef = useRef<HTMLDivElement>(null);
   const [showMargins, setShowMargins] = useState(false);
   const [margins, setMargins] = useState({ top: 25, bottom: 25, left: 20, right: 20 });
+  const [pageCount, setPageCount] = useState(1);
+  const editorContainerRef = useRef<HTMLDivElement>(null);
+
+  const marginsPx = {
+    top: Math.round(margins.top * MM_TO_PX),
+    bottom: Math.round(margins.bottom * MM_TO_PX),
+    left: Math.round(margins.left * MM_TO_PX),
+    right: Math.round(margins.right * MM_TO_PX),
+  };
+
+  const contentHeightPerPage = A4_HEIGHT_PX - marginsPx.top - marginsPx.bottom;
 
   const editor = useEditor({
     extensions: [
@@ -85,11 +101,45 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
     onUpdate: ({ editor: ed }) => onChange(ed.getHTML()),
   });
 
+  // Calculate page count based on content height
+  const recalcPages = useCallback(() => {
+    if (!editorContainerRef.current) return;
+    const prosemirror = editorContainerRef.current.querySelector(".ProseMirror");
+    if (!prosemirror) return;
+    const scrollH = (prosemirror as HTMLElement).scrollHeight;
+    const pages = Math.max(1, Math.ceil(scrollH / contentHeightPerPage));
+    setPageCount(pages);
+  }, [contentHeightPerPage]);
+
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {
       editor.commands.setContent(content);
     }
   }, [content]);
+
+  // Recalc pages on content change and resize
+  useEffect(() => {
+    if (!editor) return;
+    const handler = () => requestAnimationFrame(recalcPages);
+    editor.on("update", handler);
+    // Initial calculation
+    const timer = setTimeout(handler, 100);
+    const resizeObs = new ResizeObserver(handler);
+    if (editorContainerRef.current) {
+      const pm = editorContainerRef.current.querySelector(".ProseMirror");
+      if (pm) resizeObs.observe(pm);
+    }
+    return () => {
+      editor.off("update", handler);
+      clearTimeout(timer);
+      resizeObs.disconnect();
+    };
+  }, [editor, recalcPages]);
+
+  // Recalc on margin change
+  useEffect(() => {
+    requestAnimationFrame(recalcPages);
+  }, [margins, recalcPages]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -123,7 +173,6 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
     return acc;
   }, {} as Record<string, DocVariable[]>);
 
-  // Detect current font size
   const currentFontSize = editor.getAttributes("textStyle").fontSize || "";
 
   const ToolBtn = ({ active, onClick, children, title, className: extra }: any) => (
@@ -135,11 +184,14 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
 
   const Divider = () => <div className="w-px h-6 bg-border mx-0.5 shrink-0" />;
 
+  const totalHeight = pageCount * A4_HEIGHT_PX + (pageCount - 1) * 40; // 40px gap between pages
+
   return (
-    <div className="border border-border rounded-xl overflow-hidden bg-card shadow-sm">
-      {/* Toolbar Row 1: Font, Size, Style */}
+    <div className="flex flex-col border border-border rounded-xl overflow-hidden bg-card shadow-sm" style={{ height: "80vh" }}>
+      {/* STICKY Toolbar */}
       {!readOnly && (
-        <>
+        <div className="shrink-0 z-30 bg-card border-b border-border">
+          {/* Row 1: Font, Size, Style */}
           <div className="flex flex-wrap items-center gap-1 px-3 py-2 border-b border-border bg-muted/20 overflow-visible">
             {/* Heading level */}
             <select
@@ -189,7 +241,6 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
 
             <Divider />
 
-            {/* Bold, Italic, Underline, Strike */}
             <ToolBtn active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()} title="Negrito (Ctrl+B)">
               <Bold className="w-4 h-4" />
             </ToolBtn>
@@ -233,11 +284,15 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
                 </div>
               )}
             </div>
+
+            {/* Page count indicator */}
+            <div className="ml-auto text-[11px] text-muted-foreground tabular-nums">
+              {pageCount} {pageCount === 1 ? "página" : "páginas"}
+            </div>
           </div>
 
-          {/* Toolbar Row 2: Alignment, Lists, Table, etc */}
+          {/* Row 2: Alignment, Lists, Table, Variables */}
           <div className="flex flex-wrap items-center gap-1 px-3 py-1.5 border-b border-border bg-muted/10 overflow-visible">
-            {/* Alignment */}
             <ToolBtn active={editor.isActive({ textAlign: "left" })} onClick={() => editor.chain().focus().setTextAlign("left").run()} title="Alinhar à esquerda">
               <AlignLeft className="w-4 h-4" />
             </ToolBtn>
@@ -253,7 +308,6 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
 
             <Divider />
 
-            {/* Lists */}
             <ToolBtn active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()} title="Lista com marcadores">
               <List className="w-4 h-4" />
             </ToolBtn>
@@ -263,7 +317,6 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
 
             <Divider />
 
-            {/* Indent */}
             <ToolBtn onClick={() => editor.chain().focus().sinkListItem("listItem").run()} title="Aumentar recuo">
               <Indent className="w-4 h-4" />
             </ToolBtn>
@@ -273,7 +326,6 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
 
             <Divider />
 
-            {/* Table & HR */}
             <ToolBtn onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title="Inserir tabela">
               <TableIcon className="w-4 h-4" />
             </ToolBtn>
@@ -283,7 +335,6 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
 
             <Divider />
 
-            {/* Undo / Redo */}
             <ToolBtn onClick={() => editor.chain().focus().undo().run()} title="Desfazer (Ctrl+Z)">
               <Undo2 className="w-4 h-4" />
             </ToolBtn>
@@ -293,7 +344,7 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
 
             <Divider />
 
-            {/* Variables dropdown */}
+            {/* Variables dropdown - PRESERVED */}
             <div className="relative" ref={varsRef}>
               <button type="button" onClick={() => setShowVars(!showVars)}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-warning/10 text-warning border border-warning/20 hover:bg-warning/20 transition-colors">
@@ -333,7 +384,8 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
             <div className="ml-auto">
               <button type="button" onClick={() => setShowMargins(!showMargins)}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent hover:border-border transition-all">
-                📐 Margens
+                <Settings2 className="w-3.5 h-3.5" />
+                Margens
                 <ChevronDown className={`w-3 h-3 transition-transform ${showMargins ? "rotate-180" : ""}`} />
               </button>
             </div>
@@ -358,50 +410,164 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
               ))}
             </div>
           )}
-        </>
+        </div>
       )}
 
-      {/* Editor content - A4 style with page breaks */}
-      <div className="bg-muted/20 p-4 sm:p-8 overflow-y-auto" style={{ maxHeight: "70vh" }}>
-        <div
-          className="editor-a4-container mx-auto bg-white shadow-md border border-border/50 rounded"
-          style={{
-            maxWidth: "210mm",
-            minHeight: "297mm",
-            paddingLeft: `${margins.left}mm`,
-            paddingRight: `${margins.right}mm`,
-            paddingTop: `${margins.top}mm`,
-            paddingBottom: `${margins.bottom}mm`,
-          }}
-        >
-          <EditorContent editor={editor} className="prose prose-sm max-w-none
-            [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[800px]
-            [&_.ProseMirror_h1]:text-base [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h1]:mb-3
-            [&_.ProseMirror_h2]:text-sm [&_.ProseMirror_h2]:font-bold [&_.ProseMirror_h2]:mb-2 [&_.ProseMirror_h2]:mt-4
-            [&_.ProseMirror_p]:text-sm [&_.ProseMirror_p]:leading-relaxed [&_.ProseMirror_p]:mb-2 [&_.ProseMirror_p]:text-gray-800
-            [&_.ProseMirror_table]:border-collapse [&_.ProseMirror_table]:w-full [&_.ProseMirror_table]:mb-3
-            [&_.ProseMirror_td]:border [&_.ProseMirror_td]:border-gray-300 [&_.ProseMirror_td]:px-2 [&_.ProseMirror_td]:py-1.5 [&_.ProseMirror_td]:text-xs
-            [&_.ProseMirror_th]:border [&_.ProseMirror_th]:border-gray-300 [&_.ProseMirror_th]:px-2 [&_.ProseMirror_th]:py-1.5 [&_.ProseMirror_th]:text-xs [&_.ProseMirror_th]:bg-gray-100 [&_.ProseMirror_th]:font-semibold
-            [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-5 [&_.ProseMirror_ul]:mb-2
-            [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-5 [&_.ProseMirror_ol]:mb-2
-            [&_.ProseMirror_li]:text-sm [&_.ProseMirror_li]:mb-1
-            [&_.ProseMirror_hr]:border-t [&_.ProseMirror_hr]:border-border [&_.ProseMirror_hr]:my-4
-            [&_.ProseMirror_mark]:rounded [&_.ProseMirror_mark]:px-0.5
-          " />
+      {/* Scrollable Page View - Google Docs style */}
+      <div className="flex-1 overflow-y-auto doc-editor-scroll" style={{ backgroundColor: "#E8EAED" }}>
+        <div className="py-8 flex justify-center">
+          {/* Pages container */}
+          <div
+            ref={editorContainerRef}
+            className="doc-pages-wrapper"
+            style={{ width: A4_WIDTH_PX }}
+          >
+            {/* Visual page shells rendered behind the editor */}
+            <div className="relative" style={{ minHeight: totalHeight }}>
+              {/* Page background shells */}
+              {Array.from({ length: pageCount }).map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute left-0 right-0 pointer-events-none"
+                  style={{
+                    top: i * (A4_HEIGHT_PX + 40),
+                    height: A4_HEIGHT_PX,
+                    width: A4_WIDTH_PX,
+                  }}
+                >
+                  {/* Page paper */}
+                  <div
+                    className="bg-white rounded-sm"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.06)",
+                    }}
+                  />
+                  {/* Page number label */}
+                  <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[11px] text-gray-400 select-none tabular-nums">
+                    Página {i + 1} de {pageCount}
+                  </div>
+                </div>
+              ))}
+
+              {/* Editor content overlaid on top of pages */}
+              <div
+                className="relative z-10"
+                style={{
+                  paddingLeft: marginsPx.left,
+                  paddingRight: marginsPx.right,
+                  paddingTop: marginsPx.top,
+                  width: A4_WIDTH_PX,
+                }}
+              >
+                <EditorContent
+                  editor={editor}
+                  className="doc-editor-content prose prose-sm max-w-none"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
+      {/* Scoped styles for the editor */}
       <style>{`
-        .editor-a4-container {
-          background-image: repeating-linear-gradient(
-            to bottom,
-            transparent 0px,
-            transparent calc(297mm - 1px),
-            hsl(var(--border)) calc(297mm - 1px),
-            hsl(var(--border)) 297mm
-          );
-          background-size: 100% 297mm;
-          background-position: top;
+        .doc-editor-content .ProseMirror {
+          outline: none;
+          min-height: ${contentHeightPerPage}px;
+          font-family: "Times New Roman", serif;
+          font-size: 12pt;
+          line-height: 1.6;
+          color: #1a1a1a;
+        }
+        .doc-editor-content .ProseMirror h1 {
+          font-size: 16pt;
+          font-weight: 700;
+          margin-bottom: 12px;
+          line-height: 1.3;
+        }
+        .doc-editor-content .ProseMirror h2 {
+          font-size: 13pt;
+          font-weight: 700;
+          margin-bottom: 8px;
+          margin-top: 18px;
+          line-height: 1.3;
+        }
+        .doc-editor-content .ProseMirror h3 {
+          font-size: 12pt;
+          font-weight: 700;
+          margin-bottom: 6px;
+          margin-top: 14px;
+          line-height: 1.3;
+        }
+        .doc-editor-content .ProseMirror p {
+          font-size: inherit;
+          line-height: 1.6;
+          margin-bottom: 8px;
+          color: #1a1a1a;
+        }
+        .doc-editor-content .ProseMirror table {
+          border-collapse: collapse;
+          width: 100%;
+          margin-bottom: 12px;
+        }
+        .doc-editor-content .ProseMirror td,
+        .doc-editor-content .ProseMirror th {
+          border: 1px solid #d1d5db;
+          padding: 6px 10px;
+          font-size: 10pt;
+          vertical-align: top;
+        }
+        .doc-editor-content .ProseMirror th {
+          background: #f3f4f6;
+          font-weight: 600;
+        }
+        .doc-editor-content .ProseMirror ul {
+          list-style: disc;
+          padding-left: 24px;
+          margin-bottom: 8px;
+        }
+        .doc-editor-content .ProseMirror ol {
+          list-style: decimal;
+          padding-left: 24px;
+          margin-bottom: 8px;
+        }
+        .doc-editor-content .ProseMirror li {
+          font-size: inherit;
+          margin-bottom: 4px;
+        }
+        .doc-editor-content .ProseMirror hr {
+          border: none;
+          border-top: 1px solid #d1d5db;
+          margin: 16px 0;
+        }
+        .doc-editor-content .ProseMirror mark {
+          border-radius: 2px;
+          padding: 0 2px;
+        }
+        .doc-editor-content .ProseMirror img {
+          max-width: 100%;
+          height: auto;
+        }
+        .doc-editor-content .ProseMirror .tableWrapper {
+          overflow-x: auto;
+        }
+
+        /* Custom scrollbar */
+        .doc-editor-scroll::-webkit-scrollbar {
+          width: 10px;
+        }
+        .doc-editor-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .doc-editor-scroll::-webkit-scrollbar-thumb {
+          background: #c1c1c1;
+          border-radius: 5px;
+          border: 2px solid #E8EAED;
+        }
+        .doc-editor-scroll::-webkit-scrollbar-thumb:hover {
+          background: #a8a8a8;
         }
       `}</style>
     </div>
