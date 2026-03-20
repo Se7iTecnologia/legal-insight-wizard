@@ -21,7 +21,7 @@ export default function CasoDetalhe() {
     if (!id) return;
     const { data, error } = await supabase
       .from("casos")
-      .select("id, codigo, status, etapa_atual, contrato, simulacao, bacen, tarifas, clientes(nome, cpf_cnpj)")
+      .select("id, codigo, status, etapa_atual, contrato, simulacao, bacen, tarifas, clientes(nome, cpf_cnpj, rg, nacionalidade, estado_civil, profissao, email, telefone, endereco, cidade, uf, cep, data_nascimento)")
       .eq("id", id)
       .single();
     if (error || !data) { toast.error("Caso não encontrado"); navigate("/casos"); return; }
