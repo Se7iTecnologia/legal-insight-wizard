@@ -129,44 +129,81 @@ export function Etapa5Documentos({ caso }: Props) {
 
   const doExportPDF = async (htmlContent: string, title: string) => {
     toast.info("Gerando PDF...");
+
+    // A4 dimensions at 96dpi
+    const pageW = 794;
+    const pageH = 1123;
+    const padX = 76;  // ~20mm
+    const padY = 94;  // ~25mm
+    const contentH = pageH - padY * 2;
+
+    // Render the content off-screen to measure total height
     const container = document.createElement("div");
     container.style.position = "absolute";
     container.style.left = "-9999px";
     container.style.top = "0";
-    container.style.width = "794px";
-    container.style.padding = "94px 76px";
+    container.style.width = `${pageW - padX * 2}px`;
     container.style.backgroundColor = "white";
-    container.style.fontFamily = "Times, serif";
-    container.style.fontSize = "11pt";
+    container.style.fontFamily = '"Times New Roman", Times, serif';
+    container.style.fontSize = "12pt";
     container.style.lineHeight = "1.6";
     container.style.color = "#1a1a1a";
     container.innerHTML = `<style>
-      h1 { font-size: 14pt; font-weight: bold; margin-bottom: 12px; }
-      h2 { font-size: 12pt; font-weight: bold; margin-bottom: 8px; margin-top: 16px; }
-      p { margin-bottom: 8px; font-size: 11pt; }
+      h1 { font-size: 16pt; font-weight: bold; margin-bottom: 12px; }
+      h2 { font-size: 13pt; font-weight: bold; margin-bottom: 8px; margin-top: 18px; }
+      h3 { font-size: 12pt; font-weight: bold; margin-bottom: 6px; margin-top: 14px; }
+      p { margin-bottom: 8px; font-size: 12pt; line-height: 1.6; }
       table { border-collapse: collapse; width: 100%; margin-bottom: 12px; }
-      td, th { border: 1px solid #ccc; padding: 6px 8px; font-size: 10pt; }
+      td, th { border: 1px solid #d1d5db; padding: 6px 10px; font-size: 10pt; }
       th { background: #f3f4f6; font-weight: 600; }
-      ul { list-style: disc; padding-left: 20px; margin-bottom: 8px; }
-      ol { list-style: decimal; padding-left: 20px; margin-bottom: 8px; }
-      li { font-size: 11pt; margin-bottom: 4px; }
+      ul { list-style: disc; padding-left: 24px; margin-bottom: 8px; }
+      ol { list-style: decimal; padding-left: 24px; margin-bottom: 8px; }
+      li { font-size: 12pt; margin-bottom: 4px; }
+      hr { border: none; border-top: 1px solid #d1d5db; margin: 16px 0; }
     </style>${htmlContent}`;
     document.body.appendChild(container);
+
     try {
-      const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: "#ffffff", windowWidth: 794 });
-      const imgData = canvas.toDataURL("image/jpeg", 0.95);
+      // Capture full content as one tall image
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        windowWidth: pageW - padX * 2,
+      });
+
       const pdf = new jsPDF("p", "mm", "a4");
-      const pageWidth = 210;
-      const pageHeight = 297;
-      const imgHeight = (canvas.height * pageWidth) / canvas.width;
-      let y = 0;
-      let remaining = imgHeight;
-      while (remaining > 0) {
-        if (y > 0) pdf.addPage();
-        pdf.addImage(imgData, "JPEG", 0, -y, pageWidth, imgHeight);
-        y += pageHeight;
-        remaining -= pageHeight;
+      const pdfW = 210;
+      const pdfH = 297;
+      const marginXmm = 20;
+      const marginYmm = 25;
+      const contentWmm = pdfW - marginXmm * 2;
+      const contentHmm = pdfH - marginYmm * 2;
+
+      // Scale canvas to content area
+      const scaledImgH = (canvas.height * contentWmm) / canvas.width;
+      const totalPages = Math.ceil(scaledImgH / contentHmm);
+
+      for (let page = 0; page < totalPages; page++) {
+        if (page > 0) pdf.addPage();
+
+        // Clip the image for this page
+        const srcY = (page * contentHmm / scaledImgH) * canvas.height;
+        const srcH = Math.min((contentHmm / scaledImgH) * canvas.height, canvas.height - srcY);
+
+        const pageCanvas = document.createElement("canvas");
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = Math.round(srcH);
+        const ctx = pageCanvas.getContext("2d")!;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+        ctx.drawImage(canvas, 0, Math.round(srcY), canvas.width, Math.round(srcH), 0, 0, canvas.width, Math.round(srcH));
+
+        const pageImgData = pageCanvas.toDataURL("image/jpeg", 0.95);
+        const thisPageHmm = (pageCanvas.height * contentWmm) / pageCanvas.width;
+        pdf.addImage(pageImgData, "JPEG", marginXmm, marginYmm, contentWmm, thisPageHmm);
       }
+
       pdf.save(`${title}.pdf`);
       toast.success("PDF exportado!");
     } catch { toast.error("Erro ao gerar PDF"); }
