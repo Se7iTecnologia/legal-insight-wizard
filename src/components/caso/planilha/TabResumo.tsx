@@ -10,7 +10,6 @@ interface Props {
 
 export function TabResumo({ data, tarifas, onChange, onTarifasChange }: Props) {
   const taxaM = safeFloat(data.taxaMensal) / 100;
-  const taxaA = taxaM ? calcTaxaAnual(taxaM) : 0;
   const carencia = calcCarenciaDias(data.dataContratacao, data.primeiraParcela);
   const vf = safeFloat(data.valorFinanciado);
   const prest = safeFloat(data.prestacao);
@@ -61,8 +60,8 @@ export function TabResumo({ data, tarifas, onChange, onTarifasChange }: Props) {
           <Field label="Taxa do contrato (a.m.%)" badge="yellow" hint="Taxa de juros mensal pactuada no contrato">
             <input value={data.taxaMensal} onChange={e => onChange({ taxaMensal: e.target.value })} className={cls.yellow} placeholder="Ex: 2.5" />
           </Field>
-          <Field label="Taxa do contrato (a.a.%)" badge="green">
-            <input readOnly value={taxaA ? taxaA.toFixed(4) : ""} className={cls.green} />
+          <Field label="Taxa do contrato (a.a.%)" badge="yellow">
+            <input value={data.taxaAnual} onChange={e => onChange({ taxaAnual: e.target.value })} className={cls.yellow} placeholder="Ex: 37.03" />
           </Field>
           <Field label="Prestação (R$)" badge="yellow">
             <input value={data.prestacao} onChange={e => onChange({ prestacao: e.target.value })} className={cls.yellow} placeholder="Ex: 1500.00" />

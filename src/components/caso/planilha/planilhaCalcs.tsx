@@ -32,6 +32,7 @@ export interface PlanilhaData {
   dataContratacao: string;
   primeiraParcela: string;
   taxaMensal: string;
+  taxaAnual: string;
   prestacao: string;
   valorFinanciado: string;
   prazo: string;
@@ -58,7 +59,7 @@ export const defaultTarifas: Tarifa[] = [
 
 export const defaultPlanilhaData: PlanilhaData = {
   cliente: "", banco: "", contratoN: "", dataContratacao: "", primeiraParcela: "",
-  taxaMensal: "", prestacao: "", valorFinanciado: "", prazo: "", taxaMediaMercado: "",
+  taxaMensal: "", taxaAnual: "", prestacao: "", valorFinanciado: "", prazo: "", taxaMediaMercado: "",
   houveRenegociacao: false, parcelasPagas: "0", taxaProjecao: "", saldoRefinanciadoIdx: -1,
   reneg: {
     contratoN: "", dataContrato: "", primeiraParcela: "", taxaAplicada: "",
