@@ -180,7 +180,7 @@ export default function Usuarios() {
                   <tr key={u.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 font-medium text-foreground">{u.email}</td>
                     <td className="px-4 py-3">
-                      <select value={roles[u.id] || ""} onChange={(e) => handleRoleChange(u.id, e.target.value)} className="text-xs rounded-lg border border-input px-2 py-1.5 bg-background text-foreground">
+                      <select value={roles[u.id] || ""} onChange={(e) => setPendingRole({ userId: u.id, role: e.target.value })} className="text-xs rounded-lg border border-input px-2 py-1.5 bg-background text-foreground">
                         <option value="admin">Admin</option>
                         <option value="advogado">Advogado</option>
                         <option value="operador">Operador</option>
