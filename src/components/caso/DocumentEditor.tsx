@@ -30,6 +30,8 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
   const [showVars, setShowVars] = useState(false);
   const [varSearch, setVarSearch] = useState("");
   const varsRef = useRef<HTMLDivElement>(null);
+  const [showMargins, setShowMargins] = useState(false);
+  const [margins, setMargins] = useState({ top: 25, bottom: 25, left: 20, right: 20 });
 
   const editor = useEditor({
     extensions: [
