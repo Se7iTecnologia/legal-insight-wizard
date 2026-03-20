@@ -99,7 +99,7 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
     <div className="border border-border rounded-xl overflow-hidden bg-card">
       {/* Toolbar */}
       {!readOnly && (
-        <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-border bg-muted/30 overflow-x-auto">
+        <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-border bg-muted/30 overflow-visible">
           {/* Font Size */}
           <select
             onChange={(e) => {
