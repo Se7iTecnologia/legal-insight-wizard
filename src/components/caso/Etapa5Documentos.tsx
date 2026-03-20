@@ -213,9 +213,13 @@ export function Etapa5Documentos({ caso }: Props) {
   }
 
   // List view
+  // Merge built-in + custom templates, filtering out duplicates by tipo
+  const builtinTipos = new Set(BUILTIN_TEMPLATES.map(t => t.tipo));
+  const uniqueCustom = customTemplates.filter(t => !builtinTipos.has(t.tipo) && t.tipo !== "custom");
+
   const allTemplates = [
     ...BUILTIN_TEMPLATES.map(t => ({ ...t, source: "builtin" as const })),
-    ...customTemplates.map(t => ({ ...t, source: "custom" as const, conteudo: t.conteudo || "" })),
+    ...uniqueCustom.map(t => ({ ...t, source: "custom" as const, conteudo: t.conteudo || "" })),
   ];
 
   return (
