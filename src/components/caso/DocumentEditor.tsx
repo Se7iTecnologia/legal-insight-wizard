@@ -236,10 +236,19 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
         </div>
       )}
 
-      {/* Editor content - A4 style */}
+      {/* Editor content - A4 style with page breaks */}
       <div className="bg-muted/20 p-4 sm:p-8 overflow-y-auto" style={{ maxHeight: "70vh" }}>
-        <div className="mx-auto bg-white shadow-md border border-border/50 rounded"
-          style={{ maxWidth: "210mm", minHeight: "297mm", padding: "25mm 20mm" }}>
+        <div
+          className="editor-a4-container mx-auto bg-white shadow-md border border-border/50 rounded"
+          style={{
+            maxWidth: "210mm",
+            minHeight: "297mm",
+            paddingLeft: "20mm",
+            paddingRight: "20mm",
+            paddingTop: "25mm",
+            paddingBottom: "25mm",
+          }}
+        >
           <EditorContent editor={editor} className="prose prose-sm max-w-none
             [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[800px]
             [&_.ProseMirror_h1]:text-base [&_.ProseMirror_h1]:font-bold [&_.ProseMirror_h1]:mb-3
@@ -254,6 +263,20 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
           " />
         </div>
       </div>
+
+      <style>{`
+        .editor-a4-container {
+          background-image: repeating-linear-gradient(
+            to bottom,
+            transparent 0px,
+            transparent calc(297mm - 1px),
+            #cbd5e1 calc(297mm - 1px),
+            #cbd5e1 297mm
+          );
+          background-size: 100% 297mm;
+          background-position: top;
+        }
+      `}</style>
     </div>
   );
 }

@@ -339,7 +339,7 @@ export const BUILTIN_TEMPLATES: { id: string; nome: string; tipo: string; descri
   {
     id: "termo-autorizacao",
     nome: "Termo de Autorização",
-    tipo: "custom",
+    tipo: "autorizacao",
     descricao: "Termo de autorização para representação e acesso a dados bancários",
     conteudo: `<h1 style="text-align:center;"><strong>TERMO DE AUTORIZAÇÃO</strong></h1>
 <p>&nbsp;</p>
