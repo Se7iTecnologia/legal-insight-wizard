@@ -63,7 +63,7 @@ function extractRuns(node: Node, inherited: Record<string, any> = {}): TextRun[]
   return runs;
 }
 
-function getAlignment(el: HTMLElement): AlignmentType | undefined {
+function getAlignment(el: HTMLElement): (typeof AlignmentType)[keyof typeof AlignmentType] | undefined {
   const ta = el.style.textAlign;
   if (ta === "center") return AlignmentType.CENTER;
   if (ta === "right") return AlignmentType.RIGHT;
