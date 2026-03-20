@@ -8,8 +8,8 @@ import {
 import { saveAs } from "file-saver";
 
 // Parse inline styles from an element
-function getRunStyle(el: HTMLElement): Partial<IRunOptions> {
-  const style: Partial<IRunOptions> = {};
+function getRunStyle(el: HTMLElement): Record<string, any> {
+  const style: Record<string, any> = {};
   const cs = el.style;
 
   if (cs.fontFamily) {
