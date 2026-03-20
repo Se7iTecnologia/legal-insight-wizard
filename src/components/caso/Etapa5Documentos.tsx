@@ -292,7 +292,7 @@ export function Etapa5Documentos({ caso }: Props) {
                       className="p-1.5 rounded-md hover:bg-background transition-colors">
                       <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
                     </button>
-                    <button onClick={() => deleteDoc(d.id)} title="Excluir"
+                    <button onClick={() => setDeleteDocId(d.id)} title="Excluir"
                       className="p-1.5 rounded-md hover:bg-destructive/10 transition-colors">
                       <Trash2 className="w-3.5 h-3.5 text-destructive" />
                     </button>
