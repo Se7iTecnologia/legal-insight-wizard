@@ -30,6 +30,8 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
   const [showVars, setShowVars] = useState(false);
   const [varSearch, setVarSearch] = useState("");
   const varsRef = useRef<HTMLDivElement>(null);
+  const [showMargins, setShowMargins] = useState(false);
+  const [margins, setMargins] = useState({ top: 25, bottom: 25, left: 20, right: 20 });
 
   const editor = useEditor({
     extensions: [
@@ -236,6 +238,48 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
         </div>
       )}
 
+      {/* Margin controls */}
+      {!readOnly && (
+        <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-muted/20 text-xs">
+          <button type="button" onClick={() => setShowMargins(!showMargins)}
+            className="flex items-center gap-1 px-2 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+            📐 Margens {showMargins ? "▲" : "▼"}
+          </button>
+          {showMargins && (
+            <div className="flex items-center gap-3 flex-wrap">
+              <label className="flex items-center gap-1 text-muted-foreground">
+                Topo
+                <input type="number" min={5} max={50} value={margins.top}
+                  onChange={(e) => setMargins(m => ({ ...m, top: Number(e.target.value) }))}
+                  className="w-12 px-1 py-0.5 rounded border border-input bg-background text-foreground text-xs text-center" />
+                mm
+              </label>
+              <label className="flex items-center gap-1 text-muted-foreground">
+                Inferior
+                <input type="number" min={5} max={50} value={margins.bottom}
+                  onChange={(e) => setMargins(m => ({ ...m, bottom: Number(e.target.value) }))}
+                  className="w-12 px-1 py-0.5 rounded border border-input bg-background text-foreground text-xs text-center" />
+                mm
+              </label>
+              <label className="flex items-center gap-1 text-muted-foreground">
+                Esquerda
+                <input type="number" min={5} max={40} value={margins.left}
+                  onChange={(e) => setMargins(m => ({ ...m, left: Number(e.target.value) }))}
+                  className="w-12 px-1 py-0.5 rounded border border-input bg-background text-foreground text-xs text-center" />
+                mm
+              </label>
+              <label className="flex items-center gap-1 text-muted-foreground">
+                Direita
+                <input type="number" min={5} max={40} value={margins.right}
+                  onChange={(e) => setMargins(m => ({ ...m, right: Number(e.target.value) }))}
+                  className="w-12 px-1 py-0.5 rounded border border-input bg-background text-foreground text-xs text-center" />
+                mm
+              </label>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Editor content - A4 style with page breaks */}
       <div className="bg-muted/20 p-4 sm:p-8 overflow-y-auto" style={{ maxHeight: "70vh" }}>
         <div
@@ -243,10 +287,10 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
           style={{
             maxWidth: "210mm",
             minHeight: "297mm",
-            paddingLeft: "20mm",
-            paddingRight: "20mm",
-            paddingTop: "25mm",
-            paddingBottom: "25mm",
+            paddingLeft: `${margins.left}mm`,
+            paddingRight: `${margins.right}mm`,
+            paddingTop: `${margins.top}mm`,
+            paddingBottom: `${margins.bottom}mm`,
           }}
         >
           <EditorContent editor={editor} className="prose prose-sm max-w-none
@@ -260,10 +304,24 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
             [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-5 [&_.ProseMirror_ul]:mb-2
             [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-5 [&_.ProseMirror_ol]:mb-2
             [&_.ProseMirror_li]:text-sm [&_.ProseMirror_li]:mb-1
+            [&_.ProseMirror_hr]:border-t [&_.ProseMirror_hr]:border-border [&_.ProseMirror_hr]:my-4
           " />
         </div>
       </div>
 
+      <style>{`
+        .editor-a4-container {
+          background-image: repeating-linear-gradient(
+            to bottom,
+            transparent 0px,
+            transparent calc(297mm - 1px),
+            hsl(var(--border)) calc(297mm - 1px),
+            hsl(var(--border)) 297mm
+          );
+          background-size: 100% 297mm;
+          background-position: top;
+        }
+      `}</style>
     </div>
   );
 }
