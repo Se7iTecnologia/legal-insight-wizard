@@ -76,7 +76,7 @@ export function AppSidebar() {
         </button>
       </div>
 
-      <nav className="flex-1 p-3 space-y-0.5">
+      <nav className="flex-1 p-3 space-y-1">
         {navItems.map((item) => (
           <NavLink
             key={item.to}
@@ -85,16 +85,16 @@ export function AppSidebar() {
             onClick={onNavClick}
             title={item.label}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                 isCollapsed ? "justify-center" : ""
               } ${
                 isActive
-                  ? "bg-sidebar-accent text-white"
-                  : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                  ? "bg-warning/90 text-white shadow-md shadow-warning/20"
+                  : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground hover:translate-x-0.5"
               }`
             }
           >
-            <item.icon className="w-4 h-4 shrink-0" />
+            <item.icon className="w-[18px] h-[18px] shrink-0" />
             {!isCollapsed && <span>{item.label}</span>}
           </NavLink>
         ))}
