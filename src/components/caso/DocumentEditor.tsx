@@ -248,7 +248,7 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
 
   const Divider = () => <div className="w-px h-6 bg-border mx-0.5 shrink-0" />;
 
-  const totalHeight = pageCount * A4_HEIGHT_PX + (pageCount - 1) * 40; // 40px gap between pages
+  const totalHeight = pageCount * A4_HEIGHT_PX + (pageCount - 1) * PAGE_GAP;
 
   return (
     <div className="flex flex-col border border-border rounded-xl overflow-hidden bg-card shadow-sm" style={{ height: "80vh" }}>
