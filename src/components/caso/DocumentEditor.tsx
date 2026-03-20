@@ -182,13 +182,12 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
     }
   }, [content]);
 
-  // Recalc pages on content change and resize
+  // Recalc page breaks on content change and resize
   useEffect(() => {
     if (!editor) return;
-    const handler = () => requestAnimationFrame(recalcPages);
+    const handler = () => requestAnimationFrame(recalcPageBreaks);
     editor.on("update", handler);
-    // Initial calculation
-    const timer = setTimeout(handler, 100);
+    const timer = setTimeout(handler, 150);
     const resizeObs = new ResizeObserver(handler);
     if (editorContainerRef.current) {
       const pm = editorContainerRef.current.querySelector(".ProseMirror");
@@ -199,12 +198,12 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
       clearTimeout(timer);
       resizeObs.disconnect();
     };
-  }, [editor, recalcPages]);
+  }, [editor, recalcPageBreaks]);
 
   // Recalc on margin change
   useEffect(() => {
-    requestAnimationFrame(recalcPages);
-  }, [margins, recalcPages]);
+    requestAnimationFrame(recalcPageBreaks);
+  }, [margins, recalcPageBreaks]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
