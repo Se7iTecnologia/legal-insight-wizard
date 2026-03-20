@@ -290,6 +290,14 @@ export function Etapa5Documentos({ caso }: Props) {
                     </p>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => doExportPDF(d.conteudo, d.titulo)} title="Exportar PDF"
+                      className="p-1.5 rounded-md hover:bg-background transition-colors">
+                      <FileDown className="w-3.5 h-3.5 text-muted-foreground" />
+                    </button>
+                    <button onClick={() => doExportWord(d.conteudo, d.titulo)} title="Exportar Word"
+                      className="p-1.5 rounded-md hover:bg-background transition-colors">
+                      <FileType className="w-3.5 h-3.5 text-muted-foreground" />
+                    </button>
                     <button onClick={() => openDoc(d)} title="Editar"
                       className="p-1.5 rounded-md hover:bg-background transition-colors">
                       <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
