@@ -16,28 +16,70 @@ interface ApplyDocumentPageBreaksOptions {
   overflowThreshold?: number;
 }
 
-function getBreakCandidates(root: HTMLElement): HTMLElement[] {
-  const candidates: HTMLElement[] = [];
+const ATOMIC_BREAK_TAGS = new Set([
+  "p",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "li",
+  "table",
+  "blockquote",
+  "pre",
+  "hr",
+]);
 
-  Array.from(root.children).forEach((child) => {
+const CONTAINER_TAGS = new Set(["div", "section", "article"]);
+
+function isBreakRelevantElement(el: HTMLElement): boolean {
+  return el.classList.contains("tableWrapper") || ATOMIC_BREAK_TAGS.has(el.tagName.toLowerCase()) || CONTAINER_TAGS.has(el.tagName.toLowerCase()) || el.tagName.toLowerCase() === "ul" || el.tagName.toLowerCase() === "ol";
+}
+
+function collectBreakCandidates(node: HTMLElement, candidates: HTMLElement[]) {
+  Array.from(node.children).forEach((child) => {
     if (!(child instanceof HTMLElement)) return;
 
     const tag = child.tagName.toLowerCase();
 
-    if (tag === "ul" || tag === "ol") {
-      const items = Array.from(child.children).filter((item): item is HTMLElement => item instanceof HTMLElement);
-      candidates.push(...(items.length ? items : [child]));
+    if (child.classList.contains("tableWrapper") || tag === "table") {
+      candidates.push(child);
       return;
     }
 
-    if (child.classList.contains("tableWrapper")) {
+    if (tag === "ul" || tag === "ol") {
+      const listItems = Array.from(child.children).filter((item): item is HTMLElement => item instanceof HTMLElement);
+      if (listItems.length) {
+        listItems.forEach((item) => collectBreakCandidates(item, candidates));
+      } else {
+        candidates.push(child);
+      }
+      return;
+    }
+
+    if (tag === "li" || ATOMIC_BREAK_TAGS.has(tag)) {
       candidates.push(child);
+      return;
+    }
+
+    const nestedRelevantChildren = Array.from(child.children).filter(
+      (grandChild): grandChild is HTMLElement => grandChild instanceof HTMLElement && isBreakRelevantElement(grandChild),
+    );
+
+    if (nestedRelevantChildren.length && CONTAINER_TAGS.has(tag)) {
+      collectBreakCandidates(child, candidates);
       return;
     }
 
     candidates.push(child);
   });
+}
 
+function getBreakCandidates(root: HTMLElement): HTMLElement[] {
+  const candidates: HTMLElement[] = [];
+
+  collectBreakCandidates(root, candidates);
   return candidates;
 }
 
@@ -62,7 +104,7 @@ export function applyDocumentPageBreaks(
     el,
     top: getRelativeTop(root, el),
     height: el.offsetHeight,
-  }));
+  })).sort((a, b) => a.top - b.top);
 
   const pageH = contentHeightPerPage;
   const gapH = PAGE_GAP + marginsPx.top + marginsPx.bottom;
