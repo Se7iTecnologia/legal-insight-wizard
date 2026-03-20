@@ -71,6 +71,7 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
   const [margins, setMargins] = useState({ top: 25, bottom: 25, left: 20, right: 20 });
   const [pageCount, setPageCount] = useState(1);
   const editorContainerRef = useRef<HTMLDivElement>(null);
+  const isRecalcRef = useRef(false);
 
   const marginsPx = {
     top: Math.round(margins.top * MM_TO_PX),
