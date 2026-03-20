@@ -139,6 +139,10 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
     const pageH = contentHeightPerPage;
     const gapH = PAGE_GAP + marginsPx.top + marginsPx.bottom;
 
+    // Tolerance: only push if the element overflows by more than 30% of its height
+    // This prevents tiny overflows from causing huge visual gaps
+    const OVERFLOW_THRESHOLD = 0.30;
+
     let shift = 0;
     let nextBreak = pageH;
 
@@ -157,11 +161,18 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
 
       // Does this element cross the page boundary?
       if (effBottom > nextBreak && effTop < nextBreak) {
-        const push = (nextBreak - effTop) + gapH;
-        m.el.style.marginTop = `${push}px`;
-        m.el.dataset.pageBreak = '1';
-        shift += push;
-        nextBreak += pageH + gapH;
+        const overflow = effBottom - nextBreak;
+        const overflowRatio = overflow / m.height;
+
+        // Only push to next page if significant portion overflows
+        // Small overflows are allowed to stay (content flows naturally)
+        if (overflowRatio > OVERFLOW_THRESHOLD) {
+          const push = (nextBreak - effTop) + gapH;
+          m.el.style.marginTop = `${push}px`;
+          m.el.dataset.pageBreak = '1';
+          shift += push;
+          nextBreak += pageH + gapH;
+        }
       }
     }
 
