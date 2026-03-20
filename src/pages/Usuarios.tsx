@@ -92,14 +92,18 @@ export default function Usuarios() {
     setDeleting(false);
   };
 
-  const handleRoleChange = async (userId: string, role: string) => {
+  const [pendingRole, setPendingRole] = useState<{ userId: string; role: string } | null>(null);
+
+  const handleRoleChange = async () => {
+    if (!pendingRole) return;
     try {
-      await callManageUsers({ action: "update_role", userId, role });
+      await callManageUsers({ action: "update_role", userId: pendingRole.userId, role: pendingRole.role });
       toast.success("Papel atualizado!");
-      setRoles({ ...roles, [userId]: role });
+      setRoles({ ...roles, [pendingRole.userId]: pendingRole.role });
     } catch {
       toast.error("Erro ao atualizar");
     }
+    setPendingRole(null);
   };
 
   if (!isAdmin && !loading) {
