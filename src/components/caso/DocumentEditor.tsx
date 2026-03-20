@@ -13,6 +13,13 @@ import FontFamily from "@tiptap/extension-font-family";
 import Image from "@tiptap/extension-image";
 import { FontSize } from "@/lib/fontSize";
 import {
+  A4_HEIGHT_PX,
+  A4_WIDTH_PX,
+  applyDocumentPageBreaks,
+  MM_TO_PX,
+  PAGE_GAP,
+} from "@/lib/documentPagination";
+import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
   List, ListOrdered, Undo2, Redo2, Palette,
@@ -54,12 +61,6 @@ const HIGHLIGHT_COLORS = [
   { color: "#e9d5ff", label: "Roxo" },
   { color: "#fed7aa", label: "Laranja" },
 ];
-
-// A4 dimensions at 96 DPI
-const A4_WIDTH_PX = 794;  // 210mm
-const A4_HEIGHT_PX = 1123; // 297mm
-const MM_TO_PX = 3.7795;  // 1mm = 3.7795px at 96dpi
-const PAGE_GAP = 40;      // px visual gap between pages
 
 export function DocumentEditor({ content, onChange, readOnly }: Props) {
   const [showVars, setShowVars] = useState(false);
@@ -111,77 +112,17 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
 
     isRecalcRef.current = true;
 
-    const children = Array.from(pm.children) as HTMLElement[];
-    if (!children.length) {
+    if (!pm.children.length) {
       setPageCount(1);
       isRecalcRef.current = false;
       return;
     }
 
-    // 1. Clear all previously injected page-break margins
-    children.forEach(c => {
-      if (c.dataset.pageBreak) {
-        c.style.marginTop = '';
-        delete c.dataset.pageBreak;
-      }
-    });
-
-    // 2. Force reflow so we measure natural positions
-    void pm.offsetHeight;
-
-    // 3. Measure all children in their natural positions
-    const measures = children.map(c => ({
-      el: c,
-      top: c.offsetTop,
-      height: c.offsetHeight,
+    setPageCount(applyDocumentPageBreaks(pm, {
+      contentHeightPerPage,
+      marginsPx,
+      overflowThreshold: 0,
     }));
-
-    const pageH = contentHeightPerPage;
-    const gapH = PAGE_GAP + marginsPx.top + marginsPx.bottom;
-
-    // Tolerance: only push if most of the element overflows past the page boundary.
-    // This allows content to flow naturally across page boundaries (like Word).
-    // Only elements where >80% spills over get pushed to the next page.
-    const OVERFLOW_THRESHOLD = 0;
-
-    let shift = 0;
-    let nextBreak = pageH;
-
-    for (const m of measures) {
-      const effTop = m.top + shift;
-
-      // Advance break point if element is already past it
-      while (nextBreak <= effTop) {
-        nextBreak += pageH + gapH;
-      }
-
-      // Skip elements taller than a full page (can't split them)
-      if (m.height >= pageH) continue;
-
-      const effBottom = effTop + m.height;
-
-      // Does this element cross the page boundary?
-      if (effBottom > nextBreak && effTop < nextBreak) {
-        const overflow = effBottom - nextBreak;
-        const overflowRatio = overflow / m.height;
-
-        // Only push to next page if significant portion overflows
-        // Small overflows are allowed to stay (content flows naturally)
-        if (overflowRatio > OVERFLOW_THRESHOLD) {
-          const push = (nextBreak - effTop) + gapH;
-          m.el.style.marginTop = `${push}px`;
-          m.el.dataset.pageBreak = '1';
-          shift += push;
-          nextBreak += pageH + gapH;
-        }
-      }
-    }
-
-    // 4. Recalculate page count from actual rendered height
-    void pm.offsetHeight;
-    const totalH = pm.scrollHeight;
-    const pages = Math.max(1, Math.ceil((totalH + gapH) / (pageH + gapH)));
-    setPageCount(pages);
 
     requestAnimationFrame(() => {
       isRecalcRef.current = false;
@@ -490,7 +431,7 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
       )}
 
       {/* Scrollable Page View - Google Docs style */}
-      <div className="flex-1 overflow-y-auto doc-editor-scroll" style={{ backgroundColor: "#E8EAED" }}>
+      <div className="flex-1 overflow-y-auto doc-editor-scroll bg-[hsl(var(--muted))]">
         <div className="py-8 flex justify-center">
           {/* Pages container */}
           <div
@@ -536,7 +477,7 @@ export function DocumentEditor({ content, onChange, readOnly }: Props) {
                     top: (i + 1) * A4_HEIGHT_PX + i * PAGE_GAP,
                     height: PAGE_GAP,
                     width: A4_WIDTH_PX,
-                    backgroundColor: "#E8EAED",
+                    backgroundColor: "hsl(var(--muted))",
                     zIndex: 20,
                   }}
                 />
