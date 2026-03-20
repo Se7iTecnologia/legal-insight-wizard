@@ -33,7 +33,7 @@ function rgbToHex(rgb: string): string {
 }
 
 // Recursively extract text runs from an HTML element
-function extractRuns(node: Node, inherited: Partial<IRunOptions> = {}): TextRun[] {
+function extractRuns(node: Node, inherited: Record<string, any> = {}): TextRun[] {
   const runs: TextRun[] = [];
 
   node.childNodes.forEach((child) => {
