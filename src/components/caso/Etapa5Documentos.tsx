@@ -117,22 +117,67 @@ export function Etapa5Documentos({ caso }: Props) {
     else { toast.success("Documento excluído"); fetchDocs(); }
   };
 
-  const exportDocPDF = () => {
+  const exportDocPDF = async () => {
     if (!editingDoc) return;
-    const doc = new jsPDF();
-    const el = document.createElement("div");
-    el.innerHTML = editorContent;
-    const text = el.innerText || el.textContent || "";
-    const lines = doc.splitTextToSize(text, 170);
-    doc.setFontSize(11);
-    let y = 20;
-    for (const line of lines) {
-      if (y > 275) { doc.addPage(); y = 20; }
-      doc.text(line, 20, y);
-      y += 6;
+    toast.info("Gerando PDF...");
+
+    // Create a temporary container matching editor styles
+    const container = document.createElement("div");
+    container.style.position = "absolute";
+    container.style.left = "-9999px";
+    container.style.top = "0";
+    container.style.width = "794px"; // A4 at 96dpi
+    container.style.padding = "94px 76px"; // ~25mm/20mm margins
+    container.style.backgroundColor = "white";
+    container.style.fontFamily = "Times, serif";
+    container.style.fontSize = "11pt";
+    container.style.lineHeight = "1.6";
+    container.style.color = "#1a1a1a";
+    container.innerHTML = `<style>
+      h1 { font-size: 14pt; font-weight: bold; margin-bottom: 12px; }
+      h2 { font-size: 12pt; font-weight: bold; margin-bottom: 8px; margin-top: 16px; }
+      p { margin-bottom: 8px; font-size: 11pt; }
+      table { border-collapse: collapse; width: 100%; margin-bottom: 12px; }
+      td, th { border: 1px solid #ccc; padding: 6px 8px; font-size: 10pt; }
+      th { background: #f3f4f6; font-weight: 600; }
+      ul { list-style: disc; padding-left: 20px; margin-bottom: 8px; }
+      ol { list-style: decimal; padding-left: 20px; margin-bottom: 8px; }
+      li { font-size: 11pt; margin-bottom: 4px; }
+    </style>${editorContent}`;
+    document.body.appendChild(container);
+
+    try {
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        windowWidth: 794,
+      });
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const contentWidth = pageWidth;
+      const imgHeight = (canvas.height * contentWidth) / canvas.width;
+
+      let y = 0;
+      let remaining = imgHeight;
+
+      while (remaining > 0) {
+        if (y > 0) pdf.addPage();
+        pdf.addImage(imgData, "JPEG", 0, -y, contentWidth, imgHeight);
+        y += pageHeight;
+        remaining -= pageHeight;
+      }
+
+      pdf.save(`${editingDoc.titulo}.pdf`);
+      toast.success("PDF exportado!");
+    } catch {
+      toast.error("Erro ao gerar PDF");
+    } finally {
+      document.body.removeChild(container);
     }
-    doc.save(`${editingDoc.titulo}.pdf`);
-    toast.success("PDF exportado!");
   };
 
   if (loading) return <p className="text-muted-foreground">Carregando...</p>;
