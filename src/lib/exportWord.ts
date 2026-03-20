@@ -2,8 +2,6 @@ import {
   Document, Packer, Paragraph, TextRun, AlignmentType,
   HeadingLevel, Table, TableRow, TableCell, BorderStyle,
   WidthType, ShadingType,
-  type IRunOptions,
-  type IParagraphOptions,
 } from "docx";
 import { saveAs } from "file-saver";
 
