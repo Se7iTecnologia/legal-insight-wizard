@@ -112,10 +112,17 @@ export function Etapa5Documentos({ caso }: Props) {
     setView("editor");
   };
 
-  const deleteDoc = async (id: string) => {
-    const { error } = await supabase.from("documentos_caso").delete().eq("id", id);
+  const [deleteDocId, setDeleteDocId] = useState<string | null>(null);
+  const [deletingDoc, setDeletingDoc] = useState(false);
+
+  const deleteDoc = async () => {
+    if (!deleteDocId) return;
+    setDeletingDoc(true);
+    const { error } = await supabase.from("documentos_caso").delete().eq("id", deleteDocId);
     if (error) toast.error("Erro ao excluir");
     else { toast.success("Documento excluído"); fetchDocs(); }
+    setDeleteDocId(null);
+    setDeletingDoc(false);
   };
 
   const exportDocPDF = async () => {
