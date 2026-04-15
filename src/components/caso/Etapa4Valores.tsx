@@ -319,11 +319,10 @@ export function Etapa4Valores({ caso, onStatusChange }: Props) {
               </div>
             </div>
             <button
-              onClick={() => onStatusChange?.("fechado")}
-              disabled={caso.status === "fechado"}
+              onClick={() => onStatusChange?.(caso.status === "fechado" ? "ativo" : "fechado")}
               className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all duration-200 ${
                 caso.status === "fechado"
-                  ? "bg-success/20 text-success cursor-default"
+                  ? "bg-success/20 text-success hover:bg-destructive/10 hover:text-destructive"
                   : "bg-primary text-primary-foreground shadow-md shadow-primary/20 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
               }`}
             >
