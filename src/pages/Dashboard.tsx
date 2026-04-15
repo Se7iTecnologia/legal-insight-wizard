@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Briefcase, Users, FileText, Plus, Clock, ChevronRight,
-  Activity, Lock, Search, FileCheck, Gavel, CheckCircle2,
+  Activity, DollarSign, Search, FileCheck, Gavel, CheckCircle2,
   MapPin, TrendingUp,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -50,10 +50,10 @@ const STATUS_CONFIG: Record<DerivedStatus, { label: string; icon: typeof Briefca
   ja_analisado:     { label: "Já Analisados",          icon: FileCheck,    colorClass: "text-info-purple", bgClass: "bg-info-purple/10" },
   solicitacao_docs: { label: "Solicitação de Docs",    icon: FileText,     colorClass: "text-warning",     bgClass: "bg-warning/10" },
   pronto_protocolo: { label: "Prontos p/ Protocolo",   icon: Gavel,        colorClass: "text-success",     bgClass: "bg-success/10" },
-  fechado:          { label: "Fechados",                icon: Lock,         colorClass: "text-muted-foreground", bgClass: "bg-muted" },
+  fechado:          { label: "Fechados",                icon: DollarSign,   colorClass: "text-success",     bgClass: "bg-success/10" },
 };
 
-const STATUS_ORDER: DerivedStatus[] = ["em_analise", "ja_analisado", "solicitacao_docs", "pronto_protocolo", "fechado"];
+const STATUS_ORDER: DerivedStatus[] = ["em_analise", "ja_analisado", "fechado", "solicitacao_docs", "pronto_protocolo"];
 
 /* ── custom tooltip ── */
 function ChartTooltip({ active, payload, label }: any) {
