@@ -25,6 +25,7 @@ import { exportToWord } from "@/lib/exportWord";
 
 interface Props {
   caso: any;
+  onSave?: (field: string, value: any) => void;
 }
 
 interface DocRecord {
@@ -56,7 +57,7 @@ const tipoColors: Record<string, string> = {
   custom: "text-muted-foreground",
 };
 
-export function Etapa5Documentos({ caso }: Props) {
+export function Etapa5Documentos({ caso, onSave }: Props) {
   const [docs, setDocs] = useState<DocRecord[]>([]);
   const [customTemplates, setCustomTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -392,7 +393,7 @@ export function Etapa5Documentos({ caso }: Props) {
       )}
 
       {/* Checklist de Documentos */}
-      <ChecklistDocumentos caso={caso} docs={docs.map(d => ({ titulo: d.titulo, conteudo: d.conteudo }))} />
+      <ChecklistDocumentos caso={caso} docs={docs.map(d => ({ titulo: d.titulo, conteudo: d.conteudo }))} onSave={onSave} />
 
       <ConfirmDelete
         open={!!deleteDocId}
