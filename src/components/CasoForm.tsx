@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { mapDatabaseError } from "@/lib/errorMapper";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface CasoFormProps {
@@ -39,7 +40,7 @@ export function CasoForm({ open, onOpenChange, onSaved }: CasoFormProps) {
     });
 
     if (error) {
-      toast.error("Erro ao criar caso: " + error.message);
+      toast.error(mapDatabaseError(error));
     } else {
       toast.success("Caso criado com sucesso!");
       onSaved();

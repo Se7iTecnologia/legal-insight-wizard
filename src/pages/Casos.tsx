@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { mapDatabaseError } from "@/lib/errorMapper";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Plus, Search, Trash2, ArrowRight } from "lucide-react";
@@ -56,7 +57,7 @@ export default function Casos() {
     // Delete related documents first
     await supabase.from("documentos_caso").delete().eq("caso_id", deleteId);
     const { error } = await supabase.from("casos").delete().eq("id", deleteId);
-    if (error) toast.error("Erro ao excluir: " + error.message);
+    if (error) toast.error(mapDatabaseError(error));
     else { toast.success("Caso excluído!"); fetchCasos(); }
     setDeleteId(null);
     setDeleting(false);

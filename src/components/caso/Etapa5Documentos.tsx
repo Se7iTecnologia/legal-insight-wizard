@@ -14,6 +14,7 @@ import {
 } from "@/lib/documentTemplates";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import { sanitizeHtml } from "@/lib/sanitize";
 import {
   A4_HEIGHT_PX,
   A4_WIDTH_PX,
@@ -193,7 +194,7 @@ export function Etapa5Documentos({ caso, onSave, onRegisterSaveHandler }: Props)
 
     const contentRoot = document.createElement("div");
     contentRoot.className = "export-prosemirror";
-    contentRoot.innerHTML = htmlContent;
+    contentRoot.innerHTML = sanitizeHtml(htmlContent);
 
     contentLayer.appendChild(contentRoot);
     container.append(style, frame);

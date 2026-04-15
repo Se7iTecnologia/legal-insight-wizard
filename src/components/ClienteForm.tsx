@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { mapDatabaseError } from "@/lib/errorMapper";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface ClienteFormProps {
@@ -54,7 +55,7 @@ export function ClienteForm({ open, onOpenChange, clienteId, onSaved }: ClienteF
       : await supabase.from("clientes").insert(payload);
 
     if (error) {
-      toast.error("Erro ao salvar: " + error.message);
+      toast.error(mapDatabaseError(error));
     } else {
       toast.success(clienteId ? "Cliente atualizado!" : "Cliente cadastrado!");
       onSaved();

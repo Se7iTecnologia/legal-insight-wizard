@@ -4,6 +4,7 @@ import { Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { ClienteForm } from "@/components/ClienteForm";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
 import { toast } from "sonner";
+import { mapDatabaseError } from "@/lib/errorMapper";
 import { exportPDF, exportCSV, exportExcel, exportJSON } from "@/lib/exports";
 
 interface Cliente {
@@ -37,7 +38,7 @@ export default function Clientes() {
     if (!deleteId) return;
     setDeleting(true);
     const { error } = await supabase.from("clientes").delete().eq("id", deleteId);
-    if (error) toast.error("Erro ao excluir: " + error.message);
+    if (error) toast.error(mapDatabaseError(error));
     else { toast.success("Cliente excluído!"); fetchClientes(); }
     setDeleteId(null);
     setDeleting(false);
