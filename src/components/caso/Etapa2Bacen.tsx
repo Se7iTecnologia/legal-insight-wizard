@@ -61,7 +61,7 @@ export function Etapa2Bacen({ caso, onSave, saving }: Props) {
       setResultado(data);
       toast.success(`Consulta concluída: ${data.total} registros`);
     } catch (err: any) {
-      toast.error("Erro na consulta: " + (err.message || "Tente novamente"));
+      toast.error(mapDatabaseError(err));
     }
     setLoading(false);
   };

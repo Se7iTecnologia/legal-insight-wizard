@@ -54,7 +54,7 @@ export function ClienteForm({ open, onOpenChange, clienteId, onSaved }: ClienteF
       : await supabase.from("clientes").insert(payload);
 
     if (error) {
-      toast.error("Erro ao salvar: " + error.message);
+      toast.error(mapDatabaseError(error));
     } else {
       toast.success(clienteId ? "Cliente atualizado!" : "Cliente cadastrado!");
       onSaved();

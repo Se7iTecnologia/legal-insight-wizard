@@ -73,7 +73,7 @@ export default function Usuarios() {
       setNewEmail(""); setNewPassword(""); setNewRole("advogado");
       fetchUsers();
     } catch (err: any) {
-      toast.error("Erro: " + (err.message || "Tente novamente"));
+      toast.error(mapDatabaseError(err));
     }
     setCreating(false);
   };
@@ -86,7 +86,7 @@ export default function Usuarios() {
       toast.success("Usuário removido!");
       fetchUsers();
     } catch (err: any) {
-      toast.error("Erro: " + (err.message || "Tente novamente"));
+      toast.error(mapDatabaseError(err));
     }
     setDeleteId(null);
     setDeleting(false);

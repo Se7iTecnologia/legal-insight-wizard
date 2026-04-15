@@ -39,7 +39,7 @@ export function CasoForm({ open, onOpenChange, onSaved }: CasoFormProps) {
     });
 
     if (error) {
-      toast.error("Erro ao criar caso: " + error.message);
+      toast.error(mapDatabaseError(error));
     } else {
       toast.success("Caso criado com sucesso!");
       onSaved();

@@ -56,7 +56,7 @@ export default function Casos() {
     // Delete related documents first
     await supabase.from("documentos_caso").delete().eq("caso_id", deleteId);
     const { error } = await supabase.from("casos").delete().eq("id", deleteId);
-    if (error) toast.error("Erro ao excluir: " + error.message);
+    if (error) toast.error(mapDatabaseError(error));
     else { toast.success("Caso excluído!"); fetchCasos(); }
     setDeleteId(null);
     setDeleting(false);

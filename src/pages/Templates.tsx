@@ -79,7 +79,7 @@ export default function Templates() {
     if (!deleteId) return;
     setDeleting(true);
     const { error } = await supabase.from("templates").delete().eq("id", deleteId);
-    if (error) toast.error("Erro ao excluir: " + error.message);
+    if (error) toast.error(mapDatabaseError(error));
     else {
       toast.success("Template excluído!");
       fetchTemplates();
@@ -118,7 +118,7 @@ export default function Templates() {
       : await supabase.from("templates").insert(payload);
 
     if (error) {
-      toast.error("Erro ao salvar: " + error.message);
+      toast.error(mapDatabaseError(error));
     } else {
       toast.success(editId ? "Template atualizado!" : "Template criado!");
       fetchTemplates();
