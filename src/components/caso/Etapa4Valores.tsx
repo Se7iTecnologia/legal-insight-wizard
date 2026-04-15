@@ -7,6 +7,7 @@ import { safeFloat, safeInt, totalTarifas as calcTotalTarifas, calcCarenciaDias,
 
 interface Props {
   caso: any;
+  onStatusChange?: (status: string) => void;
 }
 
 export function Etapa4Valores({ caso }: Props) {
