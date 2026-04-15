@@ -116,7 +116,7 @@ export default function Dashboard() {
       em_analise: 0, ja_analisado: 0, solicitacao_docs: 0, pronto_protocolo: 0, fechado: 0,
     };
     casos.forEach((c) => {
-      if (c.status === "concluido" || c.status === "arquivado") {
+      if (c.status === "fechado" || c.status === "concluido" || c.status === "arquivado") {
         counts.fechado++;
       } else {
         const s = deriveStatus(c.etapa_atual, c.contrato);
