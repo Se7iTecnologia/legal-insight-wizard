@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -16,6 +16,7 @@ export default function CasoDetalhe() {
   const [caso, setCaso] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const stepSaveRef = useRef<(() => Promise<void>) | null>(null);
 
   const fetchCaso = useCallback(async () => {
     if (!id) return;
@@ -49,6 +50,15 @@ export default function CasoDetalhe() {
     setSaving(false);
   };
 
+  const handleHeaderSave = async () => {
+    if (!caso) return;
+    if (caso.etapa_atual === 5 && stepSaveRef.current) {
+      await stepSaveRef.current();
+      return;
+    }
+    await saveField("status", caso.status);
+  };
+
   const goToStep = async (step: number) => {
     if (!caso) return;
     await supabase.from("casos").update({ etapa_atual: step }).eq("id", caso.id);
@@ -62,7 +72,6 @@ export default function CasoDetalhe() {
 
   return (
     <div className="animate-fade-in max-w-5xl mx-auto">
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <button onClick={() => navigate("/casos")} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="w-4 h-4" /> Casos
@@ -72,24 +81,27 @@ export default function CasoDetalhe() {
           <p className="text-xs text-muted-foreground font-mono">{caso.codigo}</p>
           <p className="text-xs text-primary font-medium mt-0.5">Etapa {caso.etapa_atual}/5 — {etapaLabels[caso.etapa_atual]}</p>
         </div>
-        <button onClick={() => saveField("status", caso.status)} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-warning text-white text-sm font-medium hover:bg-warning/90 transition-colors">
+        <button onClick={handleHeaderSave} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-warning text-white text-sm font-medium hover:bg-warning/90 transition-colors">
           <Save className="w-4 h-4" /> Salvar
         </button>
       </div>
 
-      {/* Stepper */}
       <StepperNav current={caso.etapa_atual} onStep={goToStep} />
 
-      {/* Content */}
       <div className="bg-card rounded-xl border border-border p-4 sm:p-6 mb-6">
         {caso.etapa_atual === 1 && <Etapa1Calculadora caso={caso} onSave={saveField} saving={saving} />}
         {caso.etapa_atual === 2 && <Etapa2Bacen caso={caso} onSave={saveField} saving={saving} />}
         {caso.etapa_atual === 3 && <Etapa3Planilha caso={caso} onSave={saveField} onSaveBatch={saveBatch} saving={saving} />}
         {caso.etapa_atual === 4 && <Etapa4Valores caso={caso} />}
-        {caso.etapa_atual === 5 && <Etapa5Documentos caso={caso} onSave={(field, value) => setCaso((prev: any) => prev ? { ...prev, [field]: value } : prev)} />}
+        {caso.etapa_atual === 5 && (
+          <Etapa5Documentos
+            caso={caso}
+            onSave={(field, value) => setCaso((prev: any) => prev ? { ...prev, [field]: value } : prev)}
+            onRegisterSaveHandler={(handler) => { stepSaveRef.current = handler; }}
+          />
+        )}
       </div>
 
-      {/* Navigation */}
       <div className="flex justify-between">
         <button onClick={() => goToStep(Math.max(1, caso.etapa_atual - 1))} disabled={caso.etapa_atual === 1}
           className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm hover:bg-muted transition-colors disabled:opacity-50">

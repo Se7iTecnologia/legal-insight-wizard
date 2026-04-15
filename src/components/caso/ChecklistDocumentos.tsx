@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
+import { exportToWordBlob } from "@/lib/exportWord";
 
 interface ChecklistItem {
   id: string;
@@ -14,6 +15,7 @@ interface ChecklistItem {
   anexado: boolean;
   arquivo_url: string | null;
   arquivo_nome: string | null;
+  arquivo_path?: string | null;
   custom: boolean;
 }
 
@@ -21,26 +23,31 @@ interface Props {
   caso: any;
   docs: { titulo: string; conteudo: string }[];
   onSave?: (field: string, value: any) => void;
+  onRegisterSaveHandler?: (handler: (() => Promise<void>) | null) => void;
 }
 
 const DEFAULT_ITEMS: Omit<ChecklistItem, "id">[] = [
-  { nome: "Documento de identidade (RG ou CNH)", anexado: false, arquivo_url: null, arquivo_nome: null, custom: false },
-  { nome: "CPF", anexado: false, arquivo_url: null, arquivo_nome: null, custom: false },
-  { nome: "Comprovante de endereço atualizado", anexado: false, arquivo_url: null, arquivo_nome: null, custom: false },
-  { nome: "Contrato bancário assinado", anexado: false, arquivo_url: null, arquivo_nome: null, custom: false },
-  { nome: "Cálculos ou planilha revisional", anexado: false, arquivo_url: null, arquivo_nome: null, custom: false },
-  { nome: "Holerite, extrato bancário ou comprovação de renda", anexado: false, arquivo_url: null, arquivo_nome: null, custom: false },
-  { nome: "Comprovantes de despesas mensais", anexado: false, arquivo_url: null, arquivo_nome: null, custom: false },
-  { nome: "Declaração de hipossuficiência", anexado: false, arquivo_url: null, arquivo_nome: null, custom: false },
-  { nome: "Procuração assinada", anexado: false, arquivo_url: null, arquivo_nome: null, custom: false },
-  { nome: "Contrato de honorários", anexado: false, arquivo_url: null, arquivo_nome: null, custom: false },
+  { nome: "Documento de identidade (RG ou CNH)", anexado: false, arquivo_url: null, arquivo_nome: null, arquivo_path: null, custom: false },
+  { nome: "CPF", anexado: false, arquivo_url: null, arquivo_nome: null, arquivo_path: null, custom: false },
+  { nome: "Comprovante de endereço atualizado", anexado: false, arquivo_url: null, arquivo_nome: null, arquivo_path: null, custom: false },
+  { nome: "Contrato bancário assinado", anexado: false, arquivo_url: null, arquivo_nome: null, arquivo_path: null, custom: false },
+  { nome: "Cálculos ou planilha revisional", anexado: false, arquivo_url: null, arquivo_nome: null, arquivo_path: null, custom: false },
+  { nome: "Holerite, extrato bancário ou comprovação de renda", anexado: false, arquivo_url: null, arquivo_nome: null, arquivo_path: null, custom: false },
+  { nome: "Comprovantes de despesas mensais", anexado: false, arquivo_url: null, arquivo_nome: null, arquivo_path: null, custom: false },
+  { nome: "Declaração de hipossuficiência", anexado: false, arquivo_url: null, arquivo_nome: null, arquivo_path: null, custom: false },
+  { nome: "Procuração assinada", anexado: false, arquivo_url: null, arquivo_nome: null, arquivo_path: null, custom: false },
+  { nome: "Contrato de honorários", anexado: false, arquivo_url: null, arquivo_nome: null, arquivo_path: null, custom: false },
 ];
 
 function genId() {
   return crypto.randomUUID();
 }
 
-export function ChecklistDocumentos({ caso, docs, onSave }: Props) {
+function sanitizeFileName(value: string) {
+  return value.replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim() || "documento";
+}
+
+export function ChecklistDocumentos({ caso, docs, onSave, onRegisterSaveHandler }: Props) {
   const [items, setItems] = useState<ChecklistItem[]>([]);
   const [newItemName, setNewItemName] = useState("");
   const [showAddInput, setShowAddInput] = useState(false);
@@ -57,11 +64,40 @@ export function ChecklistDocumentos({ caso, docs, onSave }: Props) {
     } else {
       setItems(DEFAULT_ITEMS.map((item) => ({ ...item, id: genId() })));
     }
-  }, [caso.id]);
+  }, [caso.id, caso.contrato]);
 
   const completedCount = items.filter((i) => i.anexado).length;
   const totalCount = items.length;
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  const persistChecklist = useCallback(async () => {
+    setSaving(true);
+    const currentContrato = (caso.contrato as Record<string, any>) || {};
+    const updatedContrato = {
+      ...currentContrato,
+      checklist: JSON.parse(JSON.stringify(items)),
+    };
+
+    const { error } = await supabase
+      .from("casos")
+      .update({ contrato: updatedContrato as any })
+      .eq("id", caso.id);
+
+    if (error) {
+      toast.error("Erro ao salvar checklist");
+      setSaving(false);
+      return;
+    }
+
+    onSave?.("contrato", updatedContrato);
+    toast.success("Checklist salva!");
+    setSaving(false);
+  }, [caso.contrato, caso.id, items, onSave]);
+
+  useEffect(() => {
+    onRegisterSaveHandler?.(persistChecklist);
+    return () => onRegisterSaveHandler?.(null);
+  }, [onRegisterSaveHandler, persistChecklist]);
 
   const handleFileUpload = async (itemId: string, file: File) => {
     setUploading(itemId);
@@ -85,29 +121,37 @@ export function ChecklistDocumentos({ caso, docs, onSave }: Props) {
     setItems((prev) =>
       prev.map((item) =>
         item.id === itemId
-          ? { ...item, anexado: true, arquivo_url: urlData.publicUrl, arquivo_nome: file.name }
-          : item
-      )
+          ? {
+              ...item,
+              anexado: true,
+              arquivo_url: urlData.publicUrl,
+              arquivo_nome: file.name,
+              arquivo_path: path,
+            }
+          : item,
+      ),
     );
-    toast.success("Documento anexado!");
+
+    toast.success("Documento anexado! Agora clique em salvar.");
     setUploading(null);
   };
 
   const removeAttachment = async (itemId: string) => {
     const item = items.find((i) => i.id === itemId);
-    if (!item?.arquivo_url) return;
+    if (!item) return;
 
-    const ext = item.arquivo_nome?.split(".").pop() || "pdf";
-    const path = `checklist/${caso.id}/${itemId}.${ext}`;
+    const fallbackExt = item.arquivo_nome?.split(".").pop() || "pdf";
+    const path = item.arquivo_path || `checklist/${caso.id}/${itemId}.${fallbackExt}`;
     await supabase.storage.from("contratos").remove([path]);
 
     setItems((prev) =>
       prev.map((i) =>
         i.id === itemId
-          ? { ...i, anexado: false, arquivo_url: null, arquivo_nome: null }
-          : i
-      )
+          ? { ...i, anexado: false, arquivo_url: null, arquivo_nome: null, arquivo_path: null }
+          : i,
+      ),
     );
+
     toast.success("Anexo removido");
   };
 
@@ -115,7 +159,15 @@ export function ChecklistDocumentos({ caso, docs, onSave }: Props) {
     if (!newItemName.trim()) return;
     setItems((prev) => [
       ...prev,
-      { id: genId(), nome: newItemName.trim(), anexado: false, arquivo_url: null, arquivo_nome: null, custom: true },
+      {
+        id: genId(),
+        nome: newItemName.trim(),
+        anexado: false,
+        arquivo_url: null,
+        arquivo_nome: null,
+        arquivo_path: null,
+        custom: true,
+      },
     ]);
     setNewItemName("");
     setShowAddInput(false);
@@ -125,54 +177,50 @@ export function ChecklistDocumentos({ caso, docs, onSave }: Props) {
     setItems((prev) => prev.filter((i) => i.id !== id));
   };
 
-  const saveChecklist = async () => {
-    setSaving(true);
-    const currentContrato = (caso.contrato as Record<string, any>) || {};
-    const updatedContrato = { ...currentContrato, checklist: JSON.parse(JSON.stringify(items)) };
-    const { error } = await supabase
-      .from("casos")
-      .update({ contrato: updatedContrato as any })
-      .eq("id", caso.id);
-    if (error) toast.error("Erro ao salvar checklist");
-    else {
-      toast.success("Checklist salva!");
-      onSave?.("contrato", updatedContrato);
-    }
-    setSaving(false);
-  };
-
   const downloadZip = async () => {
     setZipping(true);
     toast.info("Preparando ZIP...");
 
     try {
       const zip = new JSZip();
-      const docsFolder = zip.folder("documentos-gerados");
+      const docsFolder = zip.folder("documentos-gerados-word");
       const anexosFolder = zip.folder("anexos-checklist");
 
       for (const doc of docs) {
-        docsFolder?.file(`${doc.titulo}.html`, doc.conteudo);
+        const wordBlob = await exportToWordBlob(doc.conteudo);
+        docsFolder?.file(`${sanitizeFileName(doc.titulo)}.docx`, wordBlob);
       }
 
       for (const item of items) {
-        if (item.anexado && item.arquivo_url) {
-          try {
+        if (!item.anexado) continue;
+
+        try {
+          let fileBlob: Blob | null = null;
+
+          if (item.arquivo_path) {
+            const { data } = await supabase.storage.from("contratos").download(item.arquivo_path);
+            fileBlob = data ?? null;
+          } else if (item.arquivo_url) {
             const response = await fetch(item.arquivo_url);
-            const blob = await response.blob();
-            const fileName = item.arquivo_nome || `${item.nome}.pdf`;
-            anexosFolder?.file(fileName, blob);
-          } catch {
-            console.warn(`Não foi possível baixar: ${item.nome}`);
+            fileBlob = await response.blob();
           }
+
+          if (!fileBlob) continue;
+
+          const fileName = sanitizeFileName(item.arquivo_nome || item.nome);
+          anexosFolder?.file(fileName, fileBlob);
+        } catch {
+          console.warn(`Não foi possível baixar: ${item.nome}`);
         }
       }
 
       const content = await zip.generateAsync({ type: "blob" });
-      saveAs(content, `${caso.codigo || "caso"}-protocolo.zip`);
+      saveAs(content, `${sanitizeFileName(caso.codigo || "caso")}-protocolo.zip`);
       toast.success("ZIP baixado com sucesso!");
     } catch {
       toast.error("Erro ao gerar ZIP");
     }
+
     setZipping(false);
   };
 
@@ -186,7 +234,7 @@ export function ChecklistDocumentos({ caso, docs, onSave }: Props) {
           </h3>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={saveChecklist} disabled={saving}
+          <button onClick={persistChecklist} disabled={saving}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50">
             <Save className="w-3.5 h-3.5" />
             {saving ? "Salvando..." : "Salvar Checklist"}
@@ -199,7 +247,6 @@ export function ChecklistDocumentos({ caso, docs, onSave }: Props) {
         </div>
       </div>
 
-      {/* Progress bar */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>{completedCount} de {totalCount} documentos anexados</span>
@@ -220,7 +267,6 @@ export function ChecklistDocumentos({ caso, docs, onSave }: Props) {
         )}
       </div>
 
-      {/* Items */}
       <div className="space-y-1.5">
         {items.map((item) => (
           <div key={item.id}
@@ -267,7 +313,6 @@ export function ChecklistDocumentos({ caso, docs, onSave }: Props) {
         ))}
       </div>
 
-      {/* Add custom */}
       {showAddInput ? (
         <div className="flex items-center gap-2">
           <input type="text" value={newItemName} onChange={(e) => setNewItemName(e.target.value)}
