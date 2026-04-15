@@ -7,6 +7,7 @@ import {
 import { ConfirmDelete } from "@/components/ConfirmDelete";
 import { DocumentEditor } from "@/components/caso/DocumentEditor";
 import { toast } from "sonner";
+import { mapDatabaseError } from "@/lib/errorMapper";
 
 interface Template {
   id: string;

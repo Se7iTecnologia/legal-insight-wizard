@@ -4,6 +4,7 @@ import { Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { ClienteForm } from "@/components/ClienteForm";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
 import { toast } from "sonner";
+import { mapDatabaseError } from "@/lib/errorMapper";
 import { exportPDF, exportCSV, exportExcel, exportJSON } from "@/lib/exports";
 
 interface Cliente {

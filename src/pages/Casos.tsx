@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { mapDatabaseError } from "@/lib/errorMapper";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Plus, Search, Trash2, ArrowRight } from "lucide-react";
