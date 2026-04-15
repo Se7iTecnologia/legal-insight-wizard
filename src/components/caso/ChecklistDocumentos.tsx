@@ -127,10 +127,10 @@ export function ChecklistDocumentos({ caso, docs }: Props) {
   const saveChecklist = async () => {
     setSaving(true);
     const currentContrato = (caso.contrato as Record<string, any>) || {};
-    const updatedContrato = { ...currentContrato, checklist: items };
+    const updatedContrato = { ...currentContrato, checklist: JSON.parse(JSON.stringify(items)) };
     const { error } = await supabase
       .from("casos")
-      .update({ contrato: updatedContrato })
+      .update({ contrato: updatedContrato as any })
       .eq("id", caso.id);
     if (error) toast.error("Erro ao salvar checklist");
     else toast.success("Checklist salva!");
