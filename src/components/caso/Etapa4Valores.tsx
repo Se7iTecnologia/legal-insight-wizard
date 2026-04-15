@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { formatBRL, calcPMT } from "@/lib/calculations";
 import { exportCSV, exportExcel, exportJSON } from "@/lib/exports";
 import { createBrandedDoc, finalizeBrandedDoc, getContentStartY, drawSummaryCards, drawSectionTitle, drawKeyValueRows, drawHighlightBox, drawDisclaimer } from "@/lib/pdfBranded";
-import { Download, TrendingDown, TrendingUp, ArrowRight, Shield, AlertTriangle, CheckCircle2, Scale } from "lucide-react";
+import { Download, TrendingDown, TrendingUp, ArrowRight, Shield, AlertTriangle, CheckCircle2, Scale, DollarSign } from "lucide-react";
 import { safeFloat, safeInt, totalTarifas as calcTotalTarifas, calcCarenciaDias, calcFatorNP } from "./planilha/planilhaCalcs";
 
 interface Props {
@@ -10,7 +10,7 @@ interface Props {
   onStatusChange?: (status: string) => void;
 }
 
-export function Etapa4Valores({ caso }: Props) {
+export function Etapa4Valores({ caso, onStatusChange }: Props) {
   const c = (caso.contrato as any) || {};
   const p = c.planilha || {};
   const tarifas = Array.isArray(caso.tarifas) ? (caso.tarifas as any[]) : [];
@@ -306,6 +306,34 @@ export function Etapa4Valores({ caso }: Props) {
               </StepDetail>
             </div>
           </details>
+
+          {/* Botão Fechar Caso */}
+          <div className="rounded-2xl border-2 border-primary/30 bg-primary/5 p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                <DollarSign className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <p className="font-semibold text-foreground">Cliente aceitou a proposta?</p>
+                <p className="text-xs text-muted-foreground">Marque como fechado para iniciar a fase documental</p>
+              </div>
+            </div>
+            <button
+              onClick={() => onStatusChange?.("fechado")}
+              disabled={caso.status === "fechado"}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all duration-200 ${
+                caso.status === "fechado"
+                  ? "bg-success/20 text-success cursor-default"
+                  : "bg-primary text-primary-foreground shadow-md shadow-primary/20 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
+              }`}
+            >
+              {caso.status === "fechado" ? (
+                <><CheckCircle2 className="w-4 h-4" /> Caso Fechado ✓</>
+              ) : (
+                <><DollarSign className="w-4 h-4" /> Fechar Caso</>
+              )}
+            </button>
+          </div>
 
           {/* Export buttons */}
           <div className="flex flex-wrap gap-2">

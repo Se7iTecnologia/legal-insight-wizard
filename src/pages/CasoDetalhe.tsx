@@ -92,7 +92,7 @@ export default function CasoDetalhe() {
         {caso.etapa_atual === 1 && <Etapa1Calculadora caso={caso} onSave={saveField} saving={saving} />}
         {caso.etapa_atual === 2 && <Etapa2Bacen caso={caso} onSave={saveField} saving={saving} />}
         {caso.etapa_atual === 3 && <Etapa3Planilha caso={caso} onSave={saveField} onSaveBatch={saveBatch} saving={saving} />}
-        {caso.etapa_atual === 4 && <Etapa4Valores caso={caso} />}
+        {caso.etapa_atual === 4 && <Etapa4Valores caso={caso} onStatusChange={(status) => saveField("status", status)} />}
         {caso.etapa_atual === 5 && (
           <Etapa5Documentos
             caso={caso}
