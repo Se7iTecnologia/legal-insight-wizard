@@ -7,6 +7,7 @@ import {
   FileDown, FileType,
 } from "lucide-react";
 import { DocumentEditor } from "./DocumentEditor";
+import { ChecklistDocumentos } from "./ChecklistDocumentos";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
 import {
   BUILTIN_TEMPLATES, buildVariableMap, replaceVariables,
@@ -389,6 +390,9 @@ export function Etapa5Documentos({ caso }: Props) {
           </div>
         </div>
       )}
+
+      {/* Checklist de Documentos */}
+      <ChecklistDocumentos caso={caso} docs={docs.map(d => ({ titulo: d.titulo, conteudo: d.conteudo }))} />
 
       <ConfirmDelete
         open={!!deleteDocId}
