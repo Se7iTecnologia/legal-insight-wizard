@@ -20,6 +20,7 @@ interface ChecklistItem {
 interface Props {
   caso: any;
   docs: { titulo: string; conteudo: string }[];
+  onSave?: (field: string, value: any) => void;
 }
 
 const DEFAULT_ITEMS: Omit<ChecklistItem, "id">[] = [
@@ -39,7 +40,7 @@ function genId() {
   return crypto.randomUUID();
 }
 
-export function ChecklistDocumentos({ caso, docs }: Props) {
+export function ChecklistDocumentos({ caso, docs, onSave }: Props) {
   const [items, setItems] = useState<ChecklistItem[]>([]);
   const [newItemName, setNewItemName] = useState("");
   const [showAddInput, setShowAddInput] = useState(false);
@@ -133,7 +134,10 @@ export function ChecklistDocumentos({ caso, docs }: Props) {
       .update({ contrato: updatedContrato as any })
       .eq("id", caso.id);
     if (error) toast.error("Erro ao salvar checklist");
-    else toast.success("Checklist salva!");
+    else {
+      toast.success("Checklist salva!");
+      onSave?.("contrato", updatedContrato);
+    }
     setSaving(false);
   };
 
