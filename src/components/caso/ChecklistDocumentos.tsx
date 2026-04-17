@@ -13,7 +13,6 @@ interface ChecklistItem {
   id: string;
   nome: string;
   anexado: boolean;
-  arquivo_url: string | null;
   arquivo_nome: string | null;
   arquivo_path?: string | null;
   custom: boolean;
@@ -27,16 +26,16 @@ interface Props {
 }
 
 const DEFAULT_ITEMS: Omit<ChecklistItem, "id">[] = [
-  { nome: "Documento de identidade (RG ou CNH)", anexado: false, arquivo_url: null, arquivo_nome: null, arquivo_path: null, custom: false },
-  { nome: "CPF", anexado: false, arquivo_url: null, arquivo_nome: null, arquivo_path: null, custom: false },
-  { nome: "Comprovante de endereço atualizado", anexado: false, arquivo_url: null, arquivo_nome: null, arquivo_path: null, custom: false },
-  { nome: "Contrato bancário assinado", anexado: false, arquivo_url: null, arquivo_nome: null, arquivo_path: null, custom: false },
-  { nome: "Cálculos ou planilha revisional", anexado: false, arquivo_url: null, arquivo_nome: null, arquivo_path: null, custom: false },
-  { nome: "Holerite, extrato bancário ou comprovação de renda", anexado: false, arquivo_url: null, arquivo_nome: null, arquivo_path: null, custom: false },
-  { nome: "Comprovantes de despesas mensais", anexado: false, arquivo_url: null, arquivo_nome: null, arquivo_path: null, custom: false },
-  { nome: "Declaração de hipossuficiência", anexado: false, arquivo_url: null, arquivo_nome: null, arquivo_path: null, custom: false },
-  { nome: "Procuração assinada", anexado: false, arquivo_url: null, arquivo_nome: null, arquivo_path: null, custom: false },
-  { nome: "Contrato de honorários", anexado: false, arquivo_url: null, arquivo_nome: null, arquivo_path: null, custom: false },
+  { nome: "Documento de identidade (RG ou CNH)", anexado: false, arquivo_nome: null, arquivo_path: null, custom: false },
+  { nome: "CPF", anexado: false, arquivo_nome: null, arquivo_path: null, custom: false },
+  { nome: "Comprovante de endereço atualizado", anexado: false, arquivo_nome: null, arquivo_path: null, custom: false },
+  { nome: "Contrato bancário assinado", anexado: false, arquivo_nome: null, arquivo_path: null, custom: false },
+  { nome: "Cálculos ou planilha revisional", anexado: false, arquivo_nome: null, arquivo_path: null, custom: false },
+  { nome: "Holerite, extrato bancário ou comprovação de renda", anexado: false, arquivo_nome: null, arquivo_path: null, custom: false },
+  { nome: "Comprovantes de despesas mensais", anexado: false, arquivo_nome: null, arquivo_path: null, custom: false },
+  { nome: "Declaração de hipossuficiência", anexado: false, arquivo_nome: null, arquivo_path: null, custom: false },
+  { nome: "Procuração assinada", anexado: false, arquivo_nome: null, arquivo_path: null, custom: false },
+  { nome: "Contrato de honorários", anexado: false, arquivo_nome: null, arquivo_path: null, custom: false },
 ];
 
 function genId() {
@@ -45,6 +44,17 @@ function genId() {
 
 function sanitizeFileName(value: string) {
   return value.replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim() || "documento";
+}
+
+function normalizeChecklistItem(item: Partial<ChecklistItem> & { id: string; nome: string; anexado: boolean; custom: boolean }): ChecklistItem {
+  return {
+    id: item.id,
+    nome: item.nome,
+    anexado: item.anexado,
+    arquivo_nome: item.arquivo_nome ?? null,
+    arquivo_path: item.arquivo_path ?? null,
+    custom: item.custom,
+  };
 }
 
 export function ChecklistDocumentos({ caso, docs, onSave, onRegisterSaveHandler }: Props) {
@@ -60,9 +70,9 @@ export function ChecklistDocumentos({ caso, docs, onSave, onRegisterSaveHandler 
     const contrato = caso.contrato as Record<string, any> | null;
     const saved = contrato?.checklist;
     if (saved && Array.isArray(saved) && saved.length > 0) {
-      setItems(saved as ChecklistItem[]);
+      setItems(saved.map((item: any) => normalizeChecklistItem(item)));
     } else {
-      setItems(DEFAULT_ITEMS.map((item) => ({ ...item, id: genId() })));
+      setItems(DEFAULT_ITEMS.map((item) => normalizeChecklistItem({ ...item, id: genId() })));
     }
   }, [caso.id, caso.contrato]);
 
@@ -114,17 +124,12 @@ export function ChecklistDocumentos({ caso, docs, onSave, onRegisterSaveHandler 
       return;
     }
 
-    const { data: urlData } = supabase.storage
-      .from("contratos")
-      .getPublicUrl(path);
-
     setItems((prev) =>
       prev.map((item) =>
         item.id === itemId
           ? {
               ...item,
               anexado: true,
-              arquivo_url: urlData.publicUrl,
               arquivo_nome: file.name,
               arquivo_path: path,
             }
@@ -147,7 +152,7 @@ export function ChecklistDocumentos({ caso, docs, onSave, onRegisterSaveHandler 
     setItems((prev) =>
       prev.map((i) =>
         i.id === itemId
-          ? { ...i, anexado: false, arquivo_url: null, arquivo_nome: null, arquivo_path: null }
+          ? { ...i, anexado: false, arquivo_nome: null, arquivo_path: null }
           : i,
       ),
     );
@@ -163,7 +168,6 @@ export function ChecklistDocumentos({ caso, docs, onSave, onRegisterSaveHandler 
         id: genId(),
         nome: newItemName.trim(),
         anexado: false,
-        arquivo_url: null,
         arquivo_nome: null,
         arquivo_path: null,
         custom: true,
@@ -200,9 +204,6 @@ export function ChecklistDocumentos({ caso, docs, onSave, onRegisterSaveHandler 
           if (item.arquivo_path) {
             const { data } = await supabase.storage.from("contratos").download(item.arquivo_path);
             fileBlob = data ?? null;
-          } else if (item.arquivo_url) {
-            const response = await fetch(item.arquivo_url);
-            fileBlob = await response.blob();
           }
 
           if (!fileBlob) continue;
