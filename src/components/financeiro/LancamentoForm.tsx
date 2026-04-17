@@ -192,10 +192,6 @@ export function LancamentoForm({ open, onOpenChange, tipo, onSaved }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6">
-        <form className="contents">{/* anchor */}</form>
-        <div className="hidden" />
-        {/* main content below */}
-        <></>
         <DialogHeader>
           <DialogTitle className={isReceita ? "text-success" : "text-destructive"}>
             {isReceita ? "Lançar Receita" : "Lançar Despesa"}
