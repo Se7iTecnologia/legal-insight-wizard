@@ -54,7 +54,7 @@ export function LancamentoForm({ open, onOpenChange, tipo, onSaved }: Props) {
     if (!open) return;
     // reset
     setDescricao(""); setValor(""); setData(new Date().toISOString().slice(0, 10));
-    setFormaPagamento(""); setCategoria(""); setClienteId(""); setContratoId(""); setParcelaId(""); setObservacoes("");
+    setFormaPagamento(""); setCategoria(""); setClienteId(""); setContratoId(""); setParcelaId(""); setObservacoes(""); setComprovante(null);
 
     (async () => {
       const [{ data: cli }, { data: ctr }] = await Promise.all([
