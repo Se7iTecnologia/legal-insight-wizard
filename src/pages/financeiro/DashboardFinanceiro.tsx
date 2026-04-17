@@ -7,8 +7,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { LancamentoForm, type LancamentoTipo } from "@/components/financeiro/LancamentoForm";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
+import { ExportButtons } from "@/components/financeiro/ExportButtons";
 
 const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const fmtDate = (s: string) => new Date(s + "T00:00:00").toLocaleDateString("pt-BR");
 
 interface Lancamento {
   id: string;
@@ -119,7 +121,20 @@ export default function DashboardFinanceiro() {
           <h1 className="font-heading text-2xl font-bold text-foreground">Financeiro</h1>
           <p className="text-sm text-muted-foreground">Dashboard e fluxo de caixa em tempo real</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
+          <ExportButtons
+            titulo="Fluxo de Caixa"
+            filename="fluxo-caixa"
+            rows={lancamentos.map((l) => ({
+              Data: fmtDate(l.data),
+              Tipo: l.tipo === "receita" ? "Receita" : "Despesa",
+              Descrição: l.descricao,
+              Categoria: l.categoria || "",
+              "Forma Pagamento": l.forma_pagamento || "",
+              Valor: fmt(Number(l.valor)),
+              Observações: l.observacoes || "",
+            }))}
+          />
           <button
             onClick={() => abrir("receita")}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-success text-white text-sm font-medium hover:bg-success/90 transition-colors"
