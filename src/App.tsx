@@ -14,6 +14,7 @@ import Usuarios from "@/pages/Usuarios";
 import DashboardFinanceiro from "@/pages/financeiro/DashboardFinanceiro";
 import FluxoCaixa from "@/pages/financeiro/FluxoCaixa";
 import ContratosFinanceiros from "@/pages/financeiro/ContratosFinanceiros";
+import ContratoDetalhe from "@/pages/financeiro/ContratoDetalhe";
 import RelatoriosFinanceiros from "@/pages/financeiro/RelatoriosFinanceiros";
 import NotFound from "@/pages/NotFound";
 
@@ -36,6 +37,7 @@ function App() {
               <Route path="/financeiro" element={<DashboardFinanceiro />} />
               <Route path="/financeiro/fluxo-caixa" element={<FluxoCaixa />} />
               <Route path="/financeiro/contratos" element={<ContratosFinanceiros />} />
+              <Route path="/financeiro/contratos/:id" element={<ContratoDetalhe />} />
               <Route path="/financeiro/relatorios" element={<RelatoriosFinanceiros />} />
             </Route>
             <Route path="*" element={<NotFound />} />
