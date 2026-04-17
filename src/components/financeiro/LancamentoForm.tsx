@@ -3,7 +3,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { X } from "lucide-react";
+import { Paperclip, X } from "lucide-react";
 
 export type LancamentoTipo = "receita" | "despesa";
 
