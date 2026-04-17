@@ -312,6 +312,40 @@ export function LancamentoForm({ open, onOpenChange, tipo, onSaved }: Props) {
           )}
 
           <div>
+            <label className="text-xs font-medium text-muted-foreground">Comprovante (PDF ou imagem, máx. 10MB)</label>
+            {!comprovante ? (
+              <label className="mt-1 flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-input bg-background text-sm cursor-pointer hover:bg-muted/50 transition-colors">
+                <Paperclip className="w-4 h-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Anexar comprovante…</span>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f && f.size > 10 * 1024 * 1024) {
+                      toast.error("Arquivo deve ter no máximo 10MB");
+                      return;
+                    }
+                    setComprovante(f || null);
+                  }}
+                />
+              </label>
+            ) : (
+              <div className="mt-1 flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-input bg-muted/30 text-sm">
+                <div className="flex items-center gap-2 truncate">
+                  <Paperclip className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className="truncate">{comprovante.name}</span>
+                  <span className="text-xs text-muted-foreground shrink-0">({(comprovante.size / 1024).toFixed(0)} KB)</span>
+                </div>
+                <button type="button" onClick={() => setComprovante(null)} className="p-1 hover:text-destructive">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div>
             <label className="text-xs font-medium text-muted-foreground">Observações</label>
             <textarea
               value={observacoes}
