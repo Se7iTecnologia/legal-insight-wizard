@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   Wallet, TrendingUp, TrendingDown, AlertCircle, CalendarClock, PiggyBank,
-  ArrowDownCircle, ArrowUpCircle, Trash2, Filter,
+  ArrowDownCircle, ArrowUpCircle, Trash2, Filter, Paperclip,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
