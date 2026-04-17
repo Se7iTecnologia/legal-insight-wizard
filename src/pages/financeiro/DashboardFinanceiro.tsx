@@ -23,6 +23,7 @@ interface Lancamento {
   cliente_id: string | null;
   contrato_id: string | null;
   observacoes: string | null;
+  comprovante_url: string | null;
 }
 
 interface Stats {
