@@ -2,7 +2,7 @@ import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
   LayoutDashboard, Users, Briefcase, FileText, LogOut, Scale, Menu, X, UserCog, Plus,
-  PanelLeftClose, PanelLeft, Wallet, ChevronDown, PieChart, ArrowLeftRight, FileSignature, BarChart3,
+  PanelLeftClose, PanelLeft, Wallet, ChevronDown, FileSignature, BarChart3,
 } from "lucide-react";
 import { useState, createContext, useContext, useEffect } from "react";
 
@@ -15,9 +15,8 @@ const navItems = [
 ];
 
 const financeiroItems = [
-  { to: "/financeiro", icon: PieChart, label: "Dashboard Fin." },
-  { to: "/financeiro/fluxo-caixa", icon: ArrowLeftRight, label: "Fluxo de Caixa" },
-  { to: "/financeiro/contratos", icon: FileSignature, label: "Contratos Fin." },
+  { to: "/financeiro", icon: Wallet, label: "Financeiro" },
+  { to: "/financeiro/contratos", icon: FileSignature, label: "Contratos" },
   { to: "/financeiro/relatorios", icon: BarChart3, label: "Relatórios" },
 ];
 
