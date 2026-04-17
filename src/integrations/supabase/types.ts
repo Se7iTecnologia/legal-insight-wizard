@@ -254,6 +254,7 @@ export type Database = {
           atualizado_em: string
           categoria: string | null
           cliente_id: string | null
+          comprovante_url: string | null
           contrato_id: string | null
           criado_em: string
           data: string
@@ -270,6 +271,7 @@ export type Database = {
           atualizado_em?: string
           categoria?: string | null
           cliente_id?: string | null
+          comprovante_url?: string | null
           contrato_id?: string | null
           criado_em?: string
           data?: string
@@ -286,6 +288,7 @@ export type Database = {
           atualizado_em?: string
           categoria?: string | null
           cliente_id?: string | null
+          comprovante_url?: string | null
           contrato_id?: string | null
           criado_em?: string
           data?: string
