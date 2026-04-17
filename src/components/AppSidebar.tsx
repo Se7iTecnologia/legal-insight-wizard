@@ -47,13 +47,8 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 export function AppSidebar() {
   const { signOut, user } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const { collapsed, setCollapsed } = useSidebarState();
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  const isFinanceiroActive = location.pathname.startsWith("/financeiro");
-  const [finOpen, setFinOpen] = useState(isFinanceiroActive);
-  useEffect(() => { if (isFinanceiroActive) setFinOpen(true); }, [isFinanceiroActive]);
 
   const sidebarContent = (isCollapsed: boolean, onNavClick?: () => void) => (
     <>
