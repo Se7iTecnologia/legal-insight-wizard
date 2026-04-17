@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Scale, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import setiLogo from "@/assets/seti-logo.png";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -100,9 +101,24 @@ export default function Login() {
             </button>
           </form>
 
-          <p className="text-center text-xs text-muted-foreground mt-8">
-            © 2026 Juros Justos. Todos os direitos reservados.
-          </p>
+          <div className="mt-8 pt-6 border-t border-border flex flex-col items-center gap-2 text-[11px] text-muted-foreground">
+            <p>© {new Date().getFullYear()} Juros Justos. Todos os direitos reservados.</p>
+            <a
+              href="https://se7itecnologia.com.br/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 hover:text-foreground transition-colors group"
+            >
+              <span>
+                Desenvolvido por{" "}
+                <span className="font-semibold text-foreground group-hover:underline">
+                  Seti Tecnologia LTDA
+                </span>{" "}
+                · CNPJ: 19.617.014/0001-87
+              </span>
+              <img src={setiLogo} alt="Seti Tecnologia" className="h-5 w-auto opacity-80 group-hover:opacity-100 transition-opacity" />
+            </a>
+          </div>
         </div>
       </div>
 
