@@ -332,13 +332,13 @@ export function LancamentoForm({ open, onOpenChange, tipo, onSaved }: Props) {
                 />
               </label>
             ) : (
-              <div className="mt-1 flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-input bg-muted/30 text-sm">
-                <div className="flex items-center gap-2 truncate">
+              <div className="mt-1 flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-input bg-muted/30 text-sm min-w-0">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
                   <Paperclip className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <span className="truncate">{comprovante.name}</span>
-                  <span className="text-xs text-muted-foreground shrink-0">({(comprovante.size / 1024).toFixed(0)} KB)</span>
+                  <span className="truncate min-w-0 flex-1" title={comprovante.name}>{comprovante.name}</span>
+                  <span className="text-xs text-muted-foreground shrink-0 hidden sm:inline">({(comprovante.size / 1024).toFixed(0)} KB)</span>
                 </div>
-                <button type="button" onClick={() => setComprovante(null)} className="p-1 hover:text-destructive">
+                <button type="button" onClick={() => setComprovante(null)} className="p-1 hover:text-destructive shrink-0">
                   <X className="w-4 h-4" />
                 </button>
               </div>
