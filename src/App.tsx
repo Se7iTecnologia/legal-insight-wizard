@@ -11,6 +11,10 @@ import Casos from "@/pages/Casos";
 import CasoDetalhe from "@/pages/CasoDetalhe";
 import Templates from "@/pages/Templates";
 import Usuarios from "@/pages/Usuarios";
+import DashboardFinanceiro from "@/pages/financeiro/DashboardFinanceiro";
+import FluxoCaixa from "@/pages/financeiro/FluxoCaixa";
+import ContratosFinanceiros from "@/pages/financeiro/ContratosFinanceiros";
+import RelatoriosFinanceiros from "@/pages/financeiro/RelatoriosFinanceiros";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +33,10 @@ function App() {
               <Route path="/casos/:id" element={<CasoDetalhe />} />
               <Route path="/templates" element={<Templates />} />
               <Route path="/usuarios" element={<Usuarios />} />
+              <Route path="/financeiro" element={<DashboardFinanceiro />} />
+              <Route path="/financeiro/fluxo-caixa" element={<FluxoCaixa />} />
+              <Route path="/financeiro/contratos" element={<ContratosFinanceiros />} />
+              <Route path="/financeiro/relatorios" element={<RelatoriosFinanceiros />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

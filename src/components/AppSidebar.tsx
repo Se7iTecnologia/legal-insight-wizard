@@ -1,10 +1,10 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
   LayoutDashboard, Users, Briefcase, FileText, LogOut, Scale, Menu, X, UserCog, Plus,
-  PanelLeftClose, PanelLeft,
+  PanelLeftClose, PanelLeft, Wallet, ChevronDown, PieChart, ArrowLeftRight, FileSignature, BarChart3,
 } from "lucide-react";
-import { useState, createContext, useContext } from "react";
+import { useState, createContext, useContext, useEffect } from "react";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
@@ -12,6 +12,13 @@ const navItems = [
   { to: "/casos", icon: Briefcase, label: "Casos" },
   { to: "/templates", icon: FileText, label: "Templates" },
   { to: "/usuarios", icon: UserCog, label: "Usuários" },
+];
+
+const financeiroItems = [
+  { to: "/financeiro", icon: PieChart, label: "Dashboard Fin." },
+  { to: "/financeiro/fluxo-caixa", icon: ArrowLeftRight, label: "Fluxo de Caixa" },
+  { to: "/financeiro/contratos", icon: FileSignature, label: "Contratos Fin." },
+  { to: "/financeiro/relatorios", icon: BarChart3, label: "Relatórios" },
 ];
 
 interface SidebarContextType {
@@ -45,8 +52,13 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 export function AppSidebar() {
   const { signOut, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { collapsed, setCollapsed } = useSidebarState();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const isFinanceiroActive = location.pathname.startsWith("/financeiro");
+  const [finOpen, setFinOpen] = useState(isFinanceiroActive);
+  useEffect(() => { if (isFinanceiroActive) setFinOpen(true); }, [isFinanceiroActive]);
 
   const sidebarContent = (isCollapsed: boolean, onNavClick?: () => void) => (
     <>
@@ -98,6 +110,70 @@ export function AppSidebar() {
             {!isCollapsed && <span>{item.label}</span>}
           </NavLink>
         ))}
+
+        {/* Seção Financeiro */}
+        <div className="pt-2 mt-2 border-t border-sidebar-border/50">
+          {isCollapsed ? (
+            <>
+              {financeiroItems.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.to === "/financeiro"}
+                  onClick={onNavClick}
+                  title={item.label}
+                  className={({ isActive }) =>
+                    `flex items-center justify-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                      isActive
+                        ? "bg-warning/90 text-white shadow-md shadow-warning/20"
+                        : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+                    }`
+                  }
+                >
+                  <item.icon className="w-[18px] h-[18px] shrink-0" />
+                </NavLink>
+              ))}
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setFinOpen((v) => !v)}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[11px] font-semibold uppercase tracking-wider transition-colors ${
+                  isFinanceiroActive ? "text-warning" : "text-sidebar-foreground/40 hover:text-sidebar-foreground/70"
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <Wallet className="w-3.5 h-3.5" />
+                  Financeiro
+                </span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${finOpen ? "rotate-180" : ""}`} />
+              </button>
+              {finOpen && (
+                <div className="space-y-1 mt-1">
+                  {financeiroItems.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      end={item.to === "/financeiro"}
+                      onClick={onNavClick}
+                      title={item.label}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                          isActive
+                            ? "bg-warning/90 text-white shadow-md shadow-warning/20"
+                            : "text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground hover:translate-x-0.5"
+                        }`
+                      }
+                    >
+                      <item.icon className="w-[18px] h-[18px] shrink-0" />
+                      <span>{item.label}</span>
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </nav>
 
       <div className="p-3 border-t border-sidebar-border space-y-1">
