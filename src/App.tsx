@@ -37,7 +37,7 @@ function App() {
               <Route path="/financeiro/fluxo-caixa" element={<DashboardFinanceiro />} />
               <Route path="/financeiro/contratos" element={<ContratosFinanceiros />} />
               <Route path="/financeiro/contratos/:id" element={<ContratoDetalhe />} />
-              <Route path="/financeiro/relatorios" element={<RelatoriosFinanceiros />} />
+              
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
