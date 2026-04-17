@@ -133,6 +133,78 @@ export type Database = {
         }
         Relationships: []
       }
+      contratos_financeiros: {
+        Row: {
+          atualizado_em: string
+          caso_id: string | null
+          cliente_id: string | null
+          criado_em: string
+          data_inicio: string
+          descricao: string
+          id: string
+          numero_parcelas: number
+          observacoes: string | null
+          primeiro_vencimento: string
+          saldo_devedor: number
+          status: string
+          user_id: string
+          valor_pago: number
+          valor_parcela: number
+          valor_total: number
+        }
+        Insert: {
+          atualizado_em?: string
+          caso_id?: string | null
+          cliente_id?: string | null
+          criado_em?: string
+          data_inicio?: string
+          descricao?: string
+          id?: string
+          numero_parcelas?: number
+          observacoes?: string | null
+          primeiro_vencimento?: string
+          saldo_devedor?: number
+          status?: string
+          user_id?: string
+          valor_pago?: number
+          valor_parcela?: number
+          valor_total?: number
+        }
+        Update: {
+          atualizado_em?: string
+          caso_id?: string | null
+          cliente_id?: string | null
+          criado_em?: string
+          data_inicio?: string
+          descricao?: string
+          id?: string
+          numero_parcelas?: number
+          observacoes?: string | null
+          primeiro_vencimento?: string
+          saldo_devedor?: number
+          status?: string
+          user_id?: string
+          valor_pago?: number
+          valor_parcela?: number
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contratos_financeiros_caso_id_fkey"
+            columns: ["caso_id"]
+            isOneToOne: false
+            referencedRelation: "casos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contratos_financeiros_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documentos_caso: {
         Row: {
           caso_id: string
@@ -173,6 +245,132 @@ export type Database = {
             columns: ["caso_id"]
             isOneToOne: false
             referencedRelation: "casos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lancamentos: {
+        Row: {
+          atualizado_em: string
+          categoria: string | null
+          cliente_id: string | null
+          contrato_id: string | null
+          criado_em: string
+          data: string
+          descricao: string
+          forma_pagamento: string | null
+          id: string
+          observacoes: string | null
+          parcela_id: string | null
+          tipo: string
+          user_id: string
+          valor: number
+        }
+        Insert: {
+          atualizado_em?: string
+          categoria?: string | null
+          cliente_id?: string | null
+          contrato_id?: string | null
+          criado_em?: string
+          data?: string
+          descricao?: string
+          forma_pagamento?: string | null
+          id?: string
+          observacoes?: string | null
+          parcela_id?: string | null
+          tipo: string
+          user_id?: string
+          valor?: number
+        }
+        Update: {
+          atualizado_em?: string
+          categoria?: string | null
+          cliente_id?: string | null
+          contrato_id?: string | null
+          criado_em?: string
+          data?: string
+          descricao?: string
+          forma_pagamento?: string | null
+          id?: string
+          observacoes?: string | null
+          parcela_id?: string | null
+          tipo?: string
+          user_id?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lancamentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos_financeiros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_parcela_id_fkey"
+            columns: ["parcela_id"]
+            isOneToOne: false
+            referencedRelation: "parcelas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parcelas: {
+        Row: {
+          atualizado_em: string
+          contrato_id: string
+          criado_em: string
+          data_pagamento: string | null
+          data_vencimento: string
+          id: string
+          numero: number
+          observacoes: string | null
+          status: string
+          user_id: string
+          valor: number
+          valor_pago: number
+        }
+        Insert: {
+          atualizado_em?: string
+          contrato_id: string
+          criado_em?: string
+          data_pagamento?: string | null
+          data_vencimento: string
+          id?: string
+          numero: number
+          observacoes?: string | null
+          status?: string
+          user_id?: string
+          valor?: number
+          valor_pago?: number
+        }
+        Update: {
+          atualizado_em?: string
+          contrato_id?: string
+          criado_em?: string
+          data_pagamento?: string | null
+          data_vencimento?: string
+          id?: string
+          numero?: number
+          observacoes?: string | null
+          status?: string
+          user_id?: string
+          valor?: number
+          valor_pago?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parcelas_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos_financeiros"
             referencedColumns: ["id"]
           },
         ]
