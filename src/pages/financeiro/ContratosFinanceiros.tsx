@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
-import { Plus, FileSignature, Eye, Trash2, MessageCircle } from "lucide-react";
+import { Plus, FileSignature, Eye, Trash2, MessageCircle, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { ContratoForm } from "@/components/financeiro/ContratoForm";
+import { ContratoForm, type ContratoEdit } from "@/components/financeiro/ContratoForm";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
 
 interface Contrato {
@@ -15,9 +15,11 @@ interface Contrato {
   valor_pago: number;
   saldo_devedor: number;
   numero_parcelas: number;
+  valor_parcela: number;
   data_inicio: string;
   primeiro_vencimento: string;
   status: string;
+  observacoes: string | null;
   criado_em: string;
 }
 interface Cliente { id: string; nome: string; telefone: string | null; }
@@ -39,6 +41,7 @@ export default function ContratosFinanceiros() {
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "ativo" | "quitado" | "cancelado">("todos");
   const [busca, setBusca] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editContrato, setEditContrato] = useState<ContratoEdit | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -180,6 +183,18 @@ export default function ContratosFinanceiros() {
                           <button onClick={() => navigate(`/financeiro/contratos/${c.id}`)} title="Detalhes" className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted">
                             <Eye className="w-4 h-4" />
                           </button>
+                          <button
+                            onClick={() => setEditContrato({
+                              id: c.id, descricao: c.descricao, cliente_id: c.cliente_id, caso_id: c.caso_id,
+                              valor_total: Number(c.valor_total), numero_parcelas: c.numero_parcelas,
+                              valor_parcela: Number(c.valor_parcela), data_inicio: c.data_inicio,
+                              primeiro_vencimento: c.primeiro_vencimento, observacoes: c.observacoes, status: c.status,
+                            })}
+                            title="Editar"
+                            className="p-1.5 rounded-md text-muted-foreground hover:text-warning hover:bg-warning/10"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
                           <button onClick={() => setDeleteId(c.id)} title="Excluir" className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10">
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -195,6 +210,12 @@ export default function ContratosFinanceiros() {
       </div>
 
       <ContratoForm open={openForm} onOpenChange={setOpenForm} onSaved={load} />
+      <ContratoForm
+        open={!!editContrato}
+        onOpenChange={(v) => !v && setEditContrato(null)}
+        onSaved={load}
+        contratoEdit={editContrato}
+      />
       <ConfirmDelete
         open={!!deleteId}
         onOpenChange={(v) => !v && setDeleteId(null)}

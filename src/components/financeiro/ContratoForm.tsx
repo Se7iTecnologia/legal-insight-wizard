@@ -14,19 +14,36 @@ const schema = z.object({
   data_inicio: z.string().min(1),
   primeiro_vencimento: z.string().min(1),
   observacoes: z.string().max(500).optional(),
+  status: z.enum(["ativo", "quitado", "cancelado"]),
 });
 
 interface Cliente { id: string; nome: string; }
 interface Caso { id: string; codigo: string; cliente_id: string | null; }
+
+export interface ContratoEdit {
+  id: string;
+  descricao: string;
+  cliente_id: string | null;
+  caso_id: string | null;
+  valor_total: number;
+  numero_parcelas: number;
+  valor_parcela: number;
+  data_inicio: string;
+  primeiro_vencimento: string;
+  observacoes: string | null;
+  status: string;
+}
 
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onSaved?: () => void;
   preClienteId?: string | null;
+  contratoEdit?: ContratoEdit | null;
 }
 
-export function ContratoForm({ open, onOpenChange, onSaved, preClienteId }: Props) {
+export function ContratoForm({ open, onOpenChange, onSaved, preClienteId, contratoEdit }: Props) {
+  const isEdit = !!contratoEdit;
   const [descricao, setDescricao] = useState("");
   const [clienteId, setClienteId] = useState("");
   const [casoId, setCasoId] = useState("");
@@ -39,6 +56,7 @@ export function ContratoForm({ open, onOpenChange, onSaved, preClienteId }: Prop
     return d.toISOString().slice(0, 10);
   });
   const [observacoes, setObservacoes] = useState("");
+  const [status, setStatus] = useState<"ativo" | "quitado" | "cancelado">("ativo");
   const [loading, setLoading] = useState(false);
 
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -46,12 +64,26 @@ export function ContratoForm({ open, onOpenChange, onSaved, preClienteId }: Prop
 
   useEffect(() => {
     if (!open) return;
-    setDescricao(""); setClienteId(preClienteId || ""); setCasoId(""); setValorTotal("");
-    setNumeroParcelas("1"); setValorParcela("");
-    setDataInicio(new Date().toISOString().slice(0, 10));
-    const d = new Date(); d.setMonth(d.getMonth() + 1);
-    setPrimeiroVenc(d.toISOString().slice(0, 10));
-    setObservacoes("");
+    if (contratoEdit) {
+      setDescricao(contratoEdit.descricao || "");
+      setClienteId(contratoEdit.cliente_id || "");
+      setCasoId(contratoEdit.caso_id || "");
+      setValorTotal(String(contratoEdit.valor_total ?? ""));
+      setNumeroParcelas(String(contratoEdit.numero_parcelas ?? "1"));
+      setValorParcela(String(contratoEdit.valor_parcela ?? ""));
+      setDataInicio(contratoEdit.data_inicio || new Date().toISOString().slice(0, 10));
+      setPrimeiroVenc(contratoEdit.primeiro_vencimento || new Date().toISOString().slice(0, 10));
+      setObservacoes(contratoEdit.observacoes || "");
+      setStatus((contratoEdit.status as any) || "ativo");
+    } else {
+      setDescricao(""); setClienteId(preClienteId || ""); setCasoId(""); setValorTotal("");
+      setNumeroParcelas("1"); setValorParcela("");
+      setDataInicio(new Date().toISOString().slice(0, 10));
+      const d = new Date(); d.setMonth(d.getMonth() + 1);
+      setPrimeiroVenc(d.toISOString().slice(0, 10));
+      setObservacoes("");
+      setStatus("ativo");
+    }
 
     (async () => {
       const [{ data: cli }, { data: cs }] = await Promise.all([
@@ -61,16 +93,17 @@ export function ContratoForm({ open, onOpenChange, onSaved, preClienteId }: Prop
       setClientes((cli || []) as any);
       setCasos((cs || []) as any);
     })();
-  }, [open, preClienteId]);
+  }, [open, preClienteId, contratoEdit]);
 
-  // Auto valor parcela
+  // Auto valor parcela apenas em criação (em edição respeita o que veio)
   useEffect(() => {
+    if (isEdit) return;
     const vt = Number(valorTotal.replace(",", ".")) || 0;
     const np = Number(numeroParcelas) || 0;
     if (vt > 0 && np > 0) {
       setValorParcela((vt / np).toFixed(2));
     }
-  }, [valorTotal, numeroParcelas]);
+  }, [valorTotal, numeroParcelas, isEdit]);
 
   const casosCliente = casos.filter((c) => !clienteId || c.cliente_id === clienteId);
 
@@ -86,6 +119,7 @@ export function ContratoForm({ open, onOpenChange, onSaved, preClienteId }: Prop
       data_inicio: dataInicio,
       primeiro_vencimento: primeiroVenc,
       observacoes: observacoes || undefined,
+      status,
     });
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message || "Dados inválidos");
@@ -93,17 +127,32 @@ export function ContratoForm({ open, onOpenChange, onSaved, preClienteId }: Prop
     }
     setLoading(true);
     try {
-      const { data: u } = await supabase.auth.getUser();
-      const user_id = u.user?.id;
-      if (!user_id) throw new Error("Não autenticado");
+      if (isEdit && contratoEdit) {
+        // Edição: NÃO recria parcelas; apenas atualiza campos.
+        const { error } = await supabase
+          .from("contratos_financeiros" as any)
+          .update({
+            descricao: parsed.data.descricao,
+            cliente_id: parsed.data.cliente_id,
+            caso_id: parsed.data.caso_id,
+            observacoes: parsed.data.observacoes ?? "",
+            status: parsed.data.status,
+          })
+          .eq("id", contratoEdit.id);
+        if (error) throw error;
+        toast.success("Contrato atualizado");
+      } else {
+        const { data: u } = await supabase.auth.getUser();
+        const user_id = u.user?.id;
+        if (!user_id) throw new Error("Não autenticado");
 
-      const { error } = await supabase.from("contratos_financeiros" as any).insert({
-        ...parsed.data,
-        user_id,
-        status: "ativo",
-      });
-      if (error) throw error;
-      toast.success("Contrato criado. Parcelas geradas automaticamente.");
+        const { error } = await supabase.from("contratos_financeiros" as any).insert({
+          ...parsed.data,
+          user_id,
+        });
+        if (error) throw error;
+        toast.success("Contrato criado. Parcelas geradas automaticamente.");
+      }
       onSaved?.();
       onOpenChange(false);
     } catch (err: any) {
@@ -117,7 +166,7 @@ export function ContratoForm({ open, onOpenChange, onSaved, preClienteId }: Prop
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Novo Contrato Financeiro</DialogTitle>
+          <DialogTitle>{isEdit ? "Editar Contrato" : "Novo Contrato Financeiro"}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -164,7 +213,8 @@ export function ContratoForm({ open, onOpenChange, onSaved, preClienteId }: Prop
                 value={valorTotal}
                 onChange={(e) => setValorTotal(e.target.value.replace(/[^\d.,]/g, ""))}
                 inputMode="decimal"
-                className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-sm"
+                disabled={isEdit}
+                className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-sm disabled:opacity-60"
                 placeholder="0,00"
               />
             </div>
@@ -176,7 +226,8 @@ export function ContratoForm({ open, onOpenChange, onSaved, preClienteId }: Prop
                 max={360}
                 value={numeroParcelas}
                 onChange={(e) => setNumeroParcelas(e.target.value)}
-                className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-sm"
+                disabled={isEdit}
+                className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-sm disabled:opacity-60"
               />
             </div>
             <div>
@@ -185,7 +236,8 @@ export function ContratoForm({ open, onOpenChange, onSaved, preClienteId }: Prop
                 value={valorParcela}
                 onChange={(e) => setValorParcela(e.target.value.replace(/[^\d.,]/g, ""))}
                 inputMode="decimal"
-                className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-sm"
+                disabled={isEdit}
+                className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-sm disabled:opacity-60"
                 placeholder="auto"
               />
             </div>
@@ -198,7 +250,8 @@ export function ContratoForm({ open, onOpenChange, onSaved, preClienteId }: Prop
                 type="date"
                 value={dataInicio}
                 onChange={(e) => setDataInicio(e.target.value)}
-                className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-sm"
+                disabled={isEdit}
+                className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-sm disabled:opacity-60"
               />
             </div>
             <div>
@@ -207,10 +260,26 @@ export function ContratoForm({ open, onOpenChange, onSaved, preClienteId }: Prop
                 type="date"
                 value={primeiroVenc}
                 onChange={(e) => setPrimeiroVenc(e.target.value)}
-                className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-sm"
+                disabled={isEdit}
+                className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-sm disabled:opacity-60"
               />
             </div>
           </div>
+
+          {isEdit && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Status</label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as any)}
+                className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-sm"
+              >
+                <option value="ativo">Ativo</option>
+                <option value="quitado">Quitado</option>
+                <option value="cancelado">Cancelado</option>
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="text-xs font-medium text-muted-foreground">Observações</label>
@@ -223,12 +292,18 @@ export function ContratoForm({ open, onOpenChange, onSaved, preClienteId }: Prop
             />
           </div>
 
+          {isEdit && (
+            <p className="text-[11px] text-muted-foreground">
+              Em edição, valores e parcelas não podem ser alterados (manteria a integridade das parcelas já geradas). Para refazer parcelas, exclua e recrie.
+            </p>
+          )}
+
           <div className="flex gap-2 justify-end pt-2">
             <button type="button" onClick={() => onOpenChange(false)} className="px-4 py-2 rounded-lg border border-input text-sm font-medium hover:bg-muted">
               Cancelar
             </button>
             <button type="submit" disabled={loading} className="px-4 py-2 rounded-lg bg-warning text-white text-sm font-medium hover:bg-warning/90 disabled:opacity-50">
-              {loading ? "Criando..." : "Criar Contrato"}
+              {loading ? "Salvando..." : isEdit ? "Salvar alterações" : "Criar Contrato"}
             </button>
           </div>
         </form>
