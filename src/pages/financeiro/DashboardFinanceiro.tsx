@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   Wallet, TrendingUp, TrendingDown, AlertCircle, CalendarClock, PiggyBank,
-  ArrowDownCircle, ArrowUpCircle, Trash2, Filter,
+  ArrowDownCircle, ArrowUpCircle, Trash2, Filter, Paperclip,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -23,6 +23,7 @@ interface Lancamento {
   cliente_id: string | null;
   contrato_id: string | null;
   observacoes: string | null;
+  comprovante_url: string | null;
 }
 
 interface Stats {
@@ -97,11 +98,26 @@ export default function DashboardFinanceiro() {
 
   async function handleDelete() {
     if (!deleteId) return;
+    const alvo = lancamentos.find((l) => l.id === deleteId);
     const { error } = await supabase.from("lancamentos" as any).delete().eq("id", deleteId);
     if (error) toast.error("Erro ao excluir");
-    else toast.success("Lançamento excluído");
+    else {
+      if (alvo?.comprovante_url) {
+        await supabase.storage.from("comprovantes").remove([alvo.comprovante_url]);
+      }
+      toast.success("Lançamento excluído");
+    }
     setDeleteId(null);
     load();
+  }
+
+  async function abrirComprovante(path: string) {
+    const { data, error } = await supabase.storage.from("comprovantes").createSignedUrl(path, 60);
+    if (error || !data?.signedUrl) {
+      toast.error("Não foi possível abrir o comprovante");
+      return;
+    }
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   }
 
   const cards = [
@@ -227,9 +243,20 @@ export default function DashboardFinanceiro() {
                       {l.tipo === "receita" ? "+" : "−"} {fmt(Number(l.valor))}
                     </td>
                     <td className="px-2 py-2.5">
-                      <button onClick={() => setDeleteId(l.id)} className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        {l.comprovante_url && (
+                          <button
+                            onClick={() => abrirComprovante(l.comprovante_url!)}
+                            title="Visualizar/baixar comprovante"
+                            className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10"
+                          >
+                            <Paperclip className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button onClick={() => setDeleteId(l.id)} className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

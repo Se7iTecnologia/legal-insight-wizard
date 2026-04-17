@@ -3,7 +3,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { X } from "lucide-react";
+import { Paperclip, X } from "lucide-react";
 
 export type LancamentoTipo = "receita" | "despesa";
 
@@ -43,6 +43,7 @@ export function LancamentoForm({ open, onOpenChange, tipo, onSaved }: Props) {
   const [contratoId, setContratoId] = useState<string>("");
   const [parcelaId, setParcelaId] = useState<string>("");
   const [observacoes, setObservacoes] = useState("");
+  const [comprovante, setComprovante] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
 
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -53,7 +54,7 @@ export function LancamentoForm({ open, onOpenChange, tipo, onSaved }: Props) {
     if (!open) return;
     // reset
     setDescricao(""); setValor(""); setData(new Date().toISOString().slice(0, 10));
-    setFormaPagamento(""); setCategoria(""); setClienteId(""); setContratoId(""); setParcelaId(""); setObservacoes("");
+    setFormaPagamento(""); setCategoria(""); setClienteId(""); setContratoId(""); setParcelaId(""); setObservacoes(""); setComprovante(null);
 
     (async () => {
       const [{ data: cli }, { data: ctr }] = await Promise.all([
@@ -109,12 +110,27 @@ export function LancamentoForm({ open, onOpenChange, tipo, onSaved }: Props) {
       const user_id = userData.user?.id;
       if (!user_id) throw new Error("Não autenticado");
 
+      // 0) Upload do comprovante (opcional)
+      let comprovante_url: string | null = null;
+      if (comprovante) {
+        if (comprovante.size > 10 * 1024 * 1024) throw new Error("Comprovante deve ter no máximo 10MB");
+        const ext = comprovante.name.split(".").pop() || "bin";
+        const path = `${user_id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("comprovantes").upload(path, comprovante, {
+          contentType: comprovante.type || undefined,
+          upsert: false,
+        });
+        if (upErr) throw new Error("Erro ao enviar comprovante: " + upErr.message);
+        comprovante_url = path;
+      }
+
       // 1) Insere lançamento
       const { error: errIns } = await supabase.from("lancamentos" as any).insert({
         ...parsed.data,
         tipo,
         user_id,
-      });
+        comprovante_url,
+      } as any);
       if (errIns) throw errIns;
 
       // 2) Se receita vinculada a contrato → abater parcela e atualizar contrato
@@ -294,6 +310,40 @@ export function LancamentoForm({ open, onOpenChange, tipo, onSaved }: Props) {
               )}
             </>
           )}
+
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Comprovante (PDF ou imagem, máx. 10MB)</label>
+            {!comprovante ? (
+              <label className="mt-1 flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-input bg-background text-sm cursor-pointer hover:bg-muted/50 transition-colors">
+                <Paperclip className="w-4 h-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Anexar comprovante…</span>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f && f.size > 10 * 1024 * 1024) {
+                      toast.error("Arquivo deve ter no máximo 10MB");
+                      return;
+                    }
+                    setComprovante(f || null);
+                  }}
+                />
+              </label>
+            ) : (
+              <div className="mt-1 flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-input bg-muted/30 text-sm">
+                <div className="flex items-center gap-2 truncate">
+                  <Paperclip className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className="truncate">{comprovante.name}</span>
+                  <span className="text-xs text-muted-foreground shrink-0">({(comprovante.size / 1024).toFixed(0)} KB)</span>
+                </div>
+                <button type="button" onClick={() => setComprovante(null)} className="p-1 hover:text-destructive">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
 
           <div>
             <label className="text-xs font-medium text-muted-foreground">Observações</label>
