@@ -110,12 +110,27 @@ export function LancamentoForm({ open, onOpenChange, tipo, onSaved }: Props) {
       const user_id = userData.user?.id;
       if (!user_id) throw new Error("Não autenticado");
 
+      // 0) Upload do comprovante (opcional)
+      let comprovante_url: string | null = null;
+      if (comprovante) {
+        if (comprovante.size > 10 * 1024 * 1024) throw new Error("Comprovante deve ter no máximo 10MB");
+        const ext = comprovante.name.split(".").pop() || "bin";
+        const path = `${user_id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("comprovantes").upload(path, comprovante, {
+          contentType: comprovante.type || undefined,
+          upsert: false,
+        });
+        if (upErr) throw new Error("Erro ao enviar comprovante: " + upErr.message);
+        comprovante_url = path;
+      }
+
       // 1) Insere lançamento
       const { error: errIns } = await supabase.from("lancamentos" as any).insert({
         ...parsed.data,
         tipo,
         user_id,
-      });
+        comprovante_url,
+      } as any);
       if (errIns) throw errIns;
 
       // 2) Se receita vinculada a contrato → abater parcela e atualizar contrato
