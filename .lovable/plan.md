@@ -1,37 +1,39 @@
+# Módulo Financeiro — Plano de Execução
 
+Entrega faseada para não quebrar o app atual. Cada fase é independente e testável.
 
-## Situação Atual
+## 🎯 Decisões alinhadas
+- Nova tabela `contratos_financeiros` com FK opcional para `casos`
+- Sidebar agrupado em seção "Financeiro"
+- Mantém Navy & Gold atual
+- RLS por `user_id` (padrão atual)
 
-O projeto foi **recriado com sucesso** com todas as funcionalidades principais restauradas.
+## 📦 FASE 1 — Estrutura, Menu e Schema
+- Sidebar com seção "Financeiro" expansível: Dashboard Fin., Fluxo de Caixa, Contratos Fin., Relatórios
+- Migration: `contratos_financeiros`, `parcelas`, `lancamentos` (todas com RLS owner-scoped)
+- Trigger de geração automática de parcelas + marcação de vencidas
+- Páginas placeholder
 
-## Funcionalidades Implementadas
+## 💸 FASE 2 — Fluxo de Caixa
+- Lançamentos receita/despesa, filtros, saldo realtime
+- Receita vinculada a contrato → abate parcela mais próxima
 
-### ✅ Autenticação
-- Login/Signup com Supabase Auth
-- Rotas protegidas com ProtectedRoute
-- Logout funcional
+## 📄 FASE 3 — Contratos + Parcelas
+- CRUD contrato (reusa popup de cliente, caso opcional)
+- Geração automática de parcelas, timeline, histórico
+- Botão "marcar como pago" gera receita
 
-### ✅ CRUD Completo
-- **Clientes**: Cadastro, edição, exclusão com formulário completo (nome, CPF, RG, email, telefone, endereço, estado civil, profissão, etc.)
-- **Casos**: Criação vinculada a cliente, código automático (REV-YYYY-NNNN), exclusão com cascade em documentos
-- **Templates**: CRUD com tipos (Proposta, Honorários, Procuração, etc.), variáveis dinâmicas
+## 📊 FASE 4 — Dashboard Financeiro + Relatórios
+- Cards: saldo, a receber, despesas, lucro, vencidas, hoje
+- Gráficos fluxo mensal, receitas x despesas, ranking
+- Export PDF/Excel com filtros
 
-### ✅ Wizard de Análise (5 Etapas)
-1. **Calculadora Price**: Cálculo de PMT, detecção de diferença entre parcela contratada e calculada
-2. **BACEN (SGS)**: Registro de taxas SELIC, CDI, taxa média da modalidade
-3. **Planilha Revisional**: Tabela de amortização, registro de tarifas abusivas com cálculo automático
-4. **Valores a Receber**: Resumo de valores (diferença de juros + tarifas irregulares)
-5. **Documentos/Petições**: Listagem de documentos vinculados ao caso
+## 🔔 FASE 5 — Notificações e Cobranças
+- Badge sidebar, botão "Cobrar Cliente" via wa.me
+- Edge Function `notify-overdue` + cron diário
 
-### ✅ Responsividade Mobile
-- Sidebar com menu hambúrguer colapsável
-- Cards responsivos para listagens em telas pequenas
-- Layout adaptativo com breakpoints MD
+## ✅ Validação por fase
+CRUD, RLS por usuário, mobile, sem regressão.
 
-### ✅ Edge Function
-- `manage-users`: Admin SDK para listar, criar, excluir usuários e atribuir roles
-
-## Estrutura de Dados (Supabase)
-- `clientes`, `casos`, `documentos_caso`, `templates`, `user_roles`
-- Bucket de storage: `contratos`
-- Roles: admin, advogado, operador
+## 🚀 Próximo passo
+Confirme para iniciar a **Fase 1**.
