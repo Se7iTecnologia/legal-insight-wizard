@@ -243,9 +243,20 @@ export default function DashboardFinanceiro() {
                       {l.tipo === "receita" ? "+" : "−"} {fmt(Number(l.valor))}
                     </td>
                     <td className="px-2 py-2.5">
-                      <button onClick={() => setDeleteId(l.id)} className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        {l.comprovante_url && (
+                          <button
+                            onClick={() => abrirComprovante(l.comprovante_url!)}
+                            title="Visualizar/baixar comprovante"
+                            className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10"
+                          >
+                            <Paperclip className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button onClick={() => setDeleteId(l.id)} className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
