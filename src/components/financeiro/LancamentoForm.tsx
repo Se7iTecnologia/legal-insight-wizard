@@ -43,6 +43,7 @@ export function LancamentoForm({ open, onOpenChange, tipo, onSaved }: Props) {
   const [contratoId, setContratoId] = useState<string>("");
   const [parcelaId, setParcelaId] = useState<string>("");
   const [observacoes, setObservacoes] = useState("");
+  const [comprovante, setComprovante] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
 
   const [clientes, setClientes] = useState<Cliente[]>([]);
