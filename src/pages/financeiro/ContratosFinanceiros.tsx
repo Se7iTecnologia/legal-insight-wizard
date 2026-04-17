@@ -5,6 +5,9 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { ContratoForm, type ContratoEdit } from "@/components/financeiro/ContratoForm";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
+import { ExportButtons } from "@/components/financeiro/ExportButtons";
+
+const fmtDate = (s: string | null) => s ? new Date(s + "T00:00:00").toLocaleDateString("pt-BR") : "";
 
 interface Contrato {
   id: string;
@@ -108,9 +111,26 @@ export default function ContratosFinanceiros() {
           <h1 className="font-heading text-2xl font-bold text-foreground">Contratos Financeiros</h1>
           <p className="text-sm text-muted-foreground">Gerencie contratos, parcelas e recebimentos</p>
         </div>
-        <button onClick={() => setOpenForm(true)} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-warning text-white text-sm font-medium hover:bg-warning/90">
-          <Plus className="w-4 h-4" /> Novo Contrato
-        </button>
+        <div className="flex flex-wrap gap-2 items-center">
+          <ExportButtons
+            titulo="Contratos Financeiros"
+            filename="contratos"
+            rows={filtrados.map((c) => ({
+              Descrição: c.descricao,
+              Cliente: c.cliente_id ? (clientes[c.cliente_id]?.nome || "—") : "—",
+              "Valor Total": fmt(Number(c.valor_total)),
+              "Valor Pago": fmt(Number(c.valor_pago)),
+              "Saldo Devedor": fmt(Number(c.saldo_devedor)),
+              Parcelas: c.numero_parcelas,
+              "Data Início": fmtDate(c.data_inicio),
+              "1º Vencimento": fmtDate(c.primeiro_vencimento),
+              Status: c.status,
+            }))}
+          />
+          <button onClick={() => setOpenForm(true)} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-warning text-white text-sm font-medium hover:bg-warning/90">
+            <Plus className="w-4 h-4" /> Novo Contrato
+          </button>
+        </div>
       </header>
 
       {/* Filtros */}
