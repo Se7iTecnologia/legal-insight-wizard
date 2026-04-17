@@ -186,7 +186,14 @@ export function ContratoForm({ open, onOpenChange, onSaved, preClienteId, contra
             <label className="text-xs font-medium text-muted-foreground">Caso vinculado (opcional)</label>
             <select
               value={casoId}
-              onChange={(e) => setCasoId(e.target.value)}
+              onChange={(e) => {
+                const novoCaso = e.target.value;
+                setCasoId(novoCaso);
+                if (novoCaso) {
+                  const c = casos.find((x) => x.id === novoCaso);
+                  if (c) setDescricao(c.codigo);
+                }
+              }}
               className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-sm"
               disabled={!clienteId}
             >
@@ -196,12 +203,15 @@ export function ContratoForm({ open, onOpenChange, onSaved, preClienteId, contra
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Descrição *</label>
+            <label className="text-xs font-medium text-muted-foreground">
+              Descrição * {casoId && <span className="text-[10px] text-muted-foreground/70">(vinculada ao caso)</span>}
+            </label>
             <input
               value={descricao}
               onChange={(e) => setDescricao(e.target.value)}
               maxLength={200}
-              className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-sm"
+              readOnly={!!casoId}
+              className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-sm read-only:opacity-70 read-only:cursor-not-allowed"
               placeholder="Ex: Honorários ação revisional"
             />
           </div>
