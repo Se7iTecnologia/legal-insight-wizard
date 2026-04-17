@@ -98,11 +98,26 @@ export default function DashboardFinanceiro() {
 
   async function handleDelete() {
     if (!deleteId) return;
+    const alvo = lancamentos.find((l) => l.id === deleteId);
     const { error } = await supabase.from("lancamentos" as any).delete().eq("id", deleteId);
     if (error) toast.error("Erro ao excluir");
-    else toast.success("Lançamento excluído");
+    else {
+      if (alvo?.comprovante_url) {
+        await supabase.storage.from("comprovantes").remove([alvo.comprovante_url]);
+      }
+      toast.success("Lançamento excluído");
+    }
     setDeleteId(null);
     load();
+  }
+
+  async function abrirComprovante(path: string) {
+    const { data, error } = await supabase.storage.from("comprovantes").createSignedUrl(path, 60);
+    if (error || !data?.signedUrl) {
+      toast.error("Não foi possível abrir o comprovante");
+      return;
+    }
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   }
 
   const cards = [
