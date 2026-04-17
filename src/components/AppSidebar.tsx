@@ -1,23 +1,19 @@
-import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
   LayoutDashboard, Users, Briefcase, FileText, LogOut, Scale, Menu, X, UserCog, Plus,
-  PanelLeftClose, PanelLeft, Wallet, ChevronDown, FileSignature, BarChart3,
+  PanelLeftClose, PanelLeft, Wallet, FileSignature,
 } from "lucide-react";
-import { useState, createContext, useContext, useEffect } from "react";
+import { useState, createContext, useContext } from "react";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/clientes", icon: Users, label: "Clientes" },
   { to: "/casos", icon: Briefcase, label: "Casos" },
-  { to: "/templates", icon: FileText, label: "Templates" },
-  { to: "/usuarios", icon: UserCog, label: "Usuários" },
-];
-
-const financeiroItems = [
   { to: "/financeiro", icon: Wallet, label: "Financeiro" },
   { to: "/financeiro/contratos", icon: FileSignature, label: "Contratos" },
-  { to: "/financeiro/relatorios", icon: BarChart3, label: "Relatórios" },
+  { to: "/templates", icon: FileText, label: "Templates" },
+  { to: "/usuarios", icon: UserCog, label: "Usuários" },
 ];
 
 interface SidebarContextType {
