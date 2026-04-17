@@ -191,15 +191,15 @@ export function LancamentoForm({ open, onOpenChange, tipo, onSaved }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6">
+      <DialogContent className="w-[calc(100vw-1.5rem)] max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className={isReceita ? "text-success" : "text-destructive"}>
             {isReceita ? "Lançar Receita" : "Lançar Despesa"}
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
+        <form onSubmit={handleSubmit} className="space-y-4 min-w-0 max-w-full overflow-x-hidden">
+          <div className="min-w-0">
             <label className="text-xs font-medium text-muted-foreground">Descrição *</label>
             <input
               value={descricao}
@@ -210,8 +210,8 @@ export function LancamentoForm({ open, onOpenChange, tipo, onSaved }: Props) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
+            <div className="min-w-0">
               <label className="text-xs font-medium text-muted-foreground">Valor (R$) *</label>
               <input
                 value={valor}
@@ -221,7 +221,7 @@ export function LancamentoForm({ open, onOpenChange, tipo, onSaved }: Props) {
                 placeholder="0,00"
               />
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="text-xs font-medium text-muted-foreground">Data *</label>
               <input
                 type="date"
@@ -232,8 +232,8 @@ export function LancamentoForm({ open, onOpenChange, tipo, onSaved }: Props) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
+            <div className="min-w-0">
               <label className="text-xs font-medium text-muted-foreground">Forma de Pagamento</label>
               <select
                 value={formaPagamento}
@@ -245,7 +245,7 @@ export function LancamentoForm({ open, onOpenChange, tipo, onSaved }: Props) {
               </select>
             </div>
             {!isReceita ? (
-              <div>
+              <div className="min-w-0">
                 <label className="text-xs font-medium text-muted-foreground">Categoria</label>
                 <select
                   value={categoria}
@@ -257,7 +257,7 @@ export function LancamentoForm({ open, onOpenChange, tipo, onSaved }: Props) {
                 </select>
               </div>
             ) : (
-              <div>
+              <div className="min-w-0">
                 <label className="text-xs font-medium text-muted-foreground">Cliente</label>
                 <select
                   value={clienteId}
@@ -273,7 +273,7 @@ export function LancamentoForm({ open, onOpenChange, tipo, onSaved }: Props) {
 
           {isReceita && (
             <>
-              <div>
+              <div className="min-w-0">
                 <label className="text-xs font-medium text-muted-foreground">Contrato (opcional)</label>
                 <select
                   value={contratoId}
@@ -290,7 +290,7 @@ export function LancamentoForm({ open, onOpenChange, tipo, onSaved }: Props) {
               </div>
 
               {contratoId && parcelas.length > 0 && (
-                <div>
+                <div className="min-w-0">
                   <label className="text-xs font-medium text-muted-foreground">
                     Parcela a abater (vazio = mais próxima)
                   </label>
@@ -311,12 +311,12 @@ export function LancamentoForm({ open, onOpenChange, tipo, onSaved }: Props) {
             </>
           )}
 
-          <div>
+          <div className="min-w-0 max-w-full overflow-hidden">
             <label className="text-xs font-medium text-muted-foreground">Comprovante (PDF ou imagem, máx. 10MB)</label>
             {!comprovante ? (
-              <label className="mt-1 flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-input bg-background text-sm cursor-pointer hover:bg-muted/50 transition-colors">
-                <Paperclip className="w-4 h-4 text-muted-foreground" />
-                <span className="text-muted-foreground">Anexar comprovante…</span>
+              <label className="mt-1 flex max-w-full min-w-0 items-center gap-2 overflow-hidden rounded-lg border border-dashed border-input bg-background px-3 py-2 text-sm transition-colors hover:bg-muted/50 cursor-pointer">
+                <Paperclip className="w-4 h-4 text-muted-foreground shrink-0" />
+                <span className="text-muted-foreground truncate">Anexar comprovante…</span>
                 <input
                   type="file"
                   accept="image/*,application/pdf"
@@ -332,12 +332,13 @@ export function LancamentoForm({ open, onOpenChange, tipo, onSaved }: Props) {
                 />
               </label>
             ) : (
-              <div className="mt-1 flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-input bg-muted/30 text-sm min-w-0">
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <Paperclip className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <span className="truncate min-w-0 flex-1" title={comprovante.name}>{comprovante.name}</span>
-                  <span className="text-xs text-muted-foreground shrink-0 hidden sm:inline">({(comprovante.size / 1024).toFixed(0)} KB)</span>
+              <div className="mt-1 flex max-w-full min-w-0 items-center gap-2 overflow-hidden rounded-lg border border-input bg-muted/30 px-3 py-2 text-sm">
+                <Paperclip className="w-4 h-4 text-muted-foreground shrink-0" />
+                <div className="min-w-0 flex-1 overflow-hidden">
+                  <div className="truncate whitespace-nowrap" title={comprovante.name}>{comprovante.name}</div>
+                  <div className="text-xs text-muted-foreground truncate sm:hidden">Comprovante anexado</div>
                 </div>
+                <span className="text-xs text-muted-foreground shrink-0 hidden sm:inline">({(comprovante.size / 1024).toFixed(0)} KB)</span>
                 <button type="button" onClick={() => setComprovante(null)} className="p-1 hover:text-destructive shrink-0">
                   <X className="w-4 h-4" />
                 </button>
@@ -345,7 +346,7 @@ export function LancamentoForm({ open, onOpenChange, tipo, onSaved }: Props) {
             )}
           </div>
 
-          <div>
+          <div className="min-w-0">
             <label className="text-xs font-medium text-muted-foreground">Observações</label>
             <textarea
               value={observacoes}
@@ -356,18 +357,18 @@ export function LancamentoForm({ open, onOpenChange, tipo, onSaved }: Props) {
             />
           </div>
 
-          <div className="flex gap-2 justify-end pt-2">
+          <div className="flex flex-col-reverse sm:flex-row gap-2 justify-end pt-2">
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="px-4 py-2 rounded-lg border border-input text-sm font-medium hover:bg-muted"
+              className="w-full sm:w-auto px-4 py-2 rounded-lg border border-input text-sm font-medium hover:bg-muted"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading}
-              className={`px-4 py-2 rounded-lg text-white text-sm font-medium disabled:opacity-50 ${
+              className={`w-full sm:w-auto px-4 py-2 rounded-lg text-white text-sm font-medium disabled:opacity-50 ${
                 isReceita ? "bg-success hover:bg-success/90" : "bg-destructive hover:bg-destructive/90"
               }`}
             >
